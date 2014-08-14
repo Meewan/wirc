@@ -1,0 +1,18 @@
+{
+    "web":
+    {
+        "port" : 2013,
+        "login" : "admin",
+        "password" : "admin"
+    },
+    "irc":
+    {
+        "user" : "Meewan_bot_test",
+        "password" : "123456",
+        "server" : "irc.epiknet.org",
+        "port"   : 6667,
+        "channels": ["#lol-test"],
+        "userName": "meewan",
+        "clientName": "wirc"
+    }
+}
