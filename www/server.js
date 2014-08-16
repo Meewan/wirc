@@ -1,4 +1,5 @@
 var config ='';
+var serverConfigFile = 'config.json';
 var static = require('node-static');
 var http = require('http');
 var crypto = require('crypto');
@@ -12,7 +13,8 @@ var redis = require('redis');
 var redisClient;
 var client; //client irc
 //loading configuration
-require('fs').readFile('config.json', 'utf-8', function(err, data)
+var fs = require('fs');
+fs.readFile(serverConfigFile, 'utf-8', function(err, data)
     {
         config = JSON.parse(data);
         createServer();
@@ -41,7 +43,6 @@ function createServer()
                 sessions[sessionToken] = {
                     "connected": true
                 };
-                console.log(sessionToken);
                 socket.room = 'logged';
                 socket.join(socket.room);
                 socket.emit('back', JSON.stringify({
@@ -124,9 +125,13 @@ function generateSessionToken(entropy)
 
 function userPseudoManagement()
 {
-    if(config.irc.user.substring(config.irc.user.lastIndexOf("[")) === '[away]')
+    if(config.irc.user.substring(config.irc.user.lastIndexOf("[")) === '[away]' && sessions.length > 0)
     {
         nick(config.irc.user.substring(0,config.irc.user.lastIndexOf("[")-1));
+    }
+    else if(sessions.length === 0)
+    {
+        nick(config.irc.user += '[away]');
     }
 }
 ////////////////////////////////////the connection to irc logic/////////////////////////////////////////////////////////
@@ -373,7 +378,6 @@ function startIRC(irc)
             data :error
         };
         storeInRedis(data);
-        console.log(JSON.stringify(data));
         io.sockets.in('logged').emit(data.type, JSON.stringify(data));
     });
 
@@ -411,6 +415,8 @@ function messageListener(from, channel, text, message)
 function nick(newNick)
 {
     client.send("NICK", newNick);
+    config.irc.user = newNick;
+    fs.writeFile(serverConfigFile, JSON.stringify(config));
 }
 function names(channel)
 {
@@ -435,11 +441,15 @@ function say(target, message)
 function join(channel)
 {
     client.join(channel);
+    config.irc.channels.push(channel);
+    fs.writeFile(serverConfigFile, JSON.stringify(config));
 }
 
 function part(channel, reason)
 {
     client.part(channel,(reason === null || reason === undefined ? '' : reason));
+    deleteFromArray(config.irc.channels, config.irc.channels.indexof(channel));
+    fs.writeFile(serverConfigFile, JSON.stringify(config));
 }
 
 function action(channel, text)
@@ -456,17 +466,13 @@ function whois(target)
 function startRedis(redis)
 {
     redisClient = redis.createClient();
-    redisClient.on("error", function (err)
-    {
-        console.log("Error " + err);
-    });
+
 }
 
 function storeInRedis(data)
 {
     if(data.channels)
     {
-        console.log('channels');
         for(var i = 0; i < data.channels.length; i++)
         {
             storeInRedisChannel(data, data.channels[i]);
@@ -477,16 +483,15 @@ function storeInRedis(data)
         redisClient.lpush('pvt_' + data.from.toLowerCase(), JSON.stringify(data));
     }
     else if(data.channel)
-    {console.log('channel');
+    {
         storeInRedisChannel(data, data.channel);
     }
     else if (data.type === 'motd')
     {
-        console.log('motd');
         redisClient.lpush('motd', JSON.stringify(data));
     }
     else if(data.type !== 'ping')
-    {console.log('!ping');
+{
         redisClient.lpush('client', JSON.stringify(data));
     }
 }
