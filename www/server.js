@@ -10,13 +10,11 @@ var file = new(static.Server)();
 var irc = require('irc');
 var redis = require('redis');
 var redisClient;
-var pseudo;
 var client; //client irc
 //loading configuration
 require('fs').readFile('config.json', 'utf-8', function(err, data)
     {
         config = JSON.parse(data);
-        pseudo = config.irc.user;
         createServer();
     });
 
@@ -49,7 +47,7 @@ function createServer()
                 socket.emit('back', JSON.stringify({
                     "sessionId": sessionToken,
                     channels: config.irc.channels,
-                    pseudo : pseudo
+                    pseudo : config.irc.user
                 }));
                 userPseudoManagement();
             }
@@ -65,7 +63,7 @@ function createServer()
         socket.on('message', function(serialized)
         {
             var data = JSON.parse(serialized);
-            if(data.sessionId !== undefined && data.sessionId !== null && sessions[data.sessionId].connected === true )
+            if(data.sessionId !== undefined && data.sessionId !== null && sessions[data.sessionId] !== null && sessions[data.sessionId] !== undefined &&sessions[data.sessionId].connected === true )
             {
                 if(data.command === 'names')
                 {
@@ -75,9 +73,18 @@ function createServer()
                 {
                     topic(data.channel);
                 }
+                else if(data.command === 'action')
+                {
+                    actionListener(config.irc.user, data.channel, data.message, null);
+                    action(data.channel, data.message);
+                }
+                else if(data.command === 'nick')
+                {
+                    nick(data.message);
+                }
                 else
                 {
-                    messageListenner(pseudo, data.channel, data.message, null);
+                    messageListener(config.irc.user, data.channel, data.message, null);
                     say(data.channel, data.message);
                 }
             }
@@ -90,7 +97,7 @@ function createServer()
             sessions = deleteFromArray(sessions, data.sessionId);
             if (sessions.length == 0)
             {
-                nick(pseudo +'[away]');
+                nick(config.irc.user +'[away]');
             }
 
 
@@ -117,15 +124,15 @@ function generateSessionToken(entropy)
 
 function userPseudoManagement()
 {
-    if(pseudo.substring(pseudo.lastIndexOf("[")) === '[away]')
+    if(config.irc.user.substring(config.irc.user.lastIndexOf("[")) === '[away]')
     {
-        nick(pseudo.substring(0,pseudo.lastIndexOf("[")-1));
+        nick(config.irc.user.substring(0,config.irc.user.lastIndexOf("[")-1));
     }
 }
 ////////////////////////////////////the connection to irc logic/////////////////////////////////////////////////////////
 function startIRC(irc)
 {
-    client = new irc.Client(config.irc.server, pseudo,
+    client = new irc.Client(config.irc.server, config.irc.user,
         {
             port: config.irc.port,
             channels: config.irc.channels,
@@ -255,7 +262,7 @@ function startIRC(irc)
         io.sockets.in('logged').emit(data.type, JSON.stringify(data));
     });
 
-    client.addListener('message#', messageListenner);
+    client.addListener('message#', messageListener);
 
     client.addListener('notice', function (nick, to, text, message)
     {
@@ -298,9 +305,9 @@ function startIRC(irc)
 
     client.addListener('nick', function (oldnick, newnick, channels, message)
     {
-        if (oldnick === pseudo)
+        if (oldnick === config.irc.user)
         {
-            pseudo = newnick;
+            config.irc.user = newnick;
         }
         var data =
         {
@@ -370,22 +377,24 @@ function startIRC(irc)
         io.sockets.in('logged').emit(data.type, JSON.stringify(data));
     });
 
-    client.addListener('action', function (from, channel, message)
-    {
-        var data =
-        {
-            type : (channel === pseudo ? 'pvtaction' :'action'),
-            date : (new Date().getTime()),
-            from : from,
-            channel : channel,
-            data :message
-        };
-        storeInRedis(data);
-        io.sockets.in('logged').emit(data.type, JSON.stringify(data));
-    });
+    client.addListener('action', actionListener);
 }
 
-function messageListenner(from, channel, text, message)
+function actionListener (from, channel, message)
+{
+    var data =
+    {
+        type : (channel === config.irc.user ? 'pvtaction' :'action'),
+        date : (new Date().getTime()),
+        from : from,
+        channel : channel,
+        data :message
+    };
+    storeInRedis(data);
+    io.sockets.in('logged').emit(data.type, JSON.stringify(data));
+}
+
+function messageListener(from, channel, text, message)
 {
     var data =
     {

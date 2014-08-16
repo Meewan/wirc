@@ -60,11 +60,10 @@ function main(data)
                 chanDOM += '<table class="chanData" id="chan' + channel + 'data">';
                 chanDOM += '</table>';
                 chanDOM += '<div class="chanLower" id="chan' + channel + 'lower">';
-                    chanDOM += '<span class="pseudo" >';
+                    chanDOM += '<span id="pseudo" >';
                         chanDOM += pseudo;
                     chanDOM += '</span>';
-                    chanDOM += '<input class="chanInput" type="text" id="chan' + channel + 'input" />';
-                    chanDOM += '<input type="button" value="send" onclick="send(\'' + channel + '\')" />';
+                    chanDOM += '<input class="chanInput" type="text" id="chan' + channel + 'input" onKeyPress="if (event.keyCode == 13){send(\'' + channel + '\')}"  />';
                 chanDOM += '</div>';
             chanDOM += '</div>';
         chanDOM += '</div>';
@@ -81,15 +80,70 @@ function main(data)
 function send(chan)
 {
     var channel = chan.replace('_','#');
+    var message = document.getElementById('chan' + chan + 'input').value;
+    var type = messageType(message);
+    message = messageFilter(message, type);
     socket.emit('message', JSON.stringify({
         sessionId : sessionId,
+        command :type,
         channel : channel,
-        message : document.getElementById('chan' + chan + 'input').value
+        message : message
     }));
     document.getElementById('chan' + chan + 'input').value = '';
 }
 
+function messageType(message)
+{
+    if(message.charAt(0) !== "/")//if it is not a commande
+    {
+        return 'message';
+    }
+    else
+    {
+        if(message.charAt(1) === '/')//if the user escape the command
+        {
+            return 'message';
+        }
+        else
+        {
+            //enumeration of the action possible
+            var arg0 = getArg0(message);
+            if(arg0 === '/me')
+            {
+                return 'action';
+            }
+            else if(arg0 == '/nick')
+            {
+                return 'nick';
+            }
+        }
+    }
+}
 
+function messageFilter(message, command)
+{
+    if (command === 'message')
+    {
+        return message;
+    }
+    else
+    {
+        return message.substring((message.indexOf(' ') + 1));
+    }
+}
+
+function getArg0(message)
+{
+    var end = message.indexOf(' ');
+    if(end  <=  0)
+    {
+        return message.toLocaleLowerCase();
+    }
+    else
+    {
+        return message.substring(0, end).toLocaleLowerCase();
+    }
+}
 function getTopic(channel)
 {
     socket.emit('message', JSON.stringify({
@@ -124,11 +178,11 @@ function htmlSpecialChar(text)
 ///////////////////////////////////Display Logic////////////////////////////////////////////////////////////////////////
 /**
  * print a message in a channel or a list of channels, if chan is "*" print the message in all channels
- * @param source
  * @param chan
- * @param message
  * @param date
  * @param type
+ * @param src
+ * @param msg
  */
 function printMessage(date, src, chan, msg, type)
 {
@@ -162,7 +216,6 @@ function displayUserOnChan(chan, users)
     for(var user in users)
     {
         line += '<div id="userChan' +channel + user +'" class="user">' + users[user] + user + '</div>';
-
     }
     document.getElementById('chan' + channel + 'users').innerHTML = line;
 
@@ -180,6 +233,11 @@ function updateUserOnChan(action, chan, usr, newName)
     if(!(chan instanceof Array))
     {
         chan = [chan];
+    }
+    if(action === 'nick' && usr === pseudo)
+    {
+        pseudo = newName;
+        document.getElementById('pseudo').innerHTML = pseudo;
     }
     var user = htmlSpecialChar(usr);
     var chanUser = null;
@@ -381,6 +439,6 @@ function ircErrorHandler(serialized)
 }
 function errorMessageHandler(serialized)
 {
-    /*var data = JSON.parse(serialized);
-    printMessage(data.date, ERROR, currentChannel, data.data.command, 'error');*/
+    var data = JSON.parse(serialized);
+    printMessage(data.date, ERROR, currentChannel, data.data.command, 'error');
 }
