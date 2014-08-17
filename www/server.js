@@ -39,15 +39,12 @@ function createServer()
             data = JSON.parse(serialized);
             if (data.user.toLowerCase() === config.web.login.toLowerCase() && data.password === config.web.password)
             {
-                //on genere un token de session a partir de l'ip et de bruit (pas sécurisé d'un point de vue chiffrement mais suffisant)
-                sessionId = generateSessionToken(socket.handshake.address);
                 session = {connected : true}
                 connected ++;
                 session.sessionId = sessionId;
                 socket.room = 'logged';
                 socket.join(socket.room);
                 socket.emit('back', JSON.stringify({
-                    "sessionId": sessionId,
                     channels: config.irc.channels,
                     pseudo : config.irc.user
                 }));
@@ -104,27 +101,9 @@ function createServer()
         });
     });
 }
-/**
- * Generate a session token in order to emulate php sessions
- * @param entropy
- * @returns String the sessionToken
- */
-function generateSessionToken(entropy)
-{
-    var hash;
-    if(entropy == undefined || entropy == null)
-    {
-        entropy = '';
-    }
-    var totalSeed = '' + entropy +  + Math.random() ;
-    hash = crypto.createHash('md5').update(totalSeed).digest('hex');
-
-    return hash;
-}
 
 function userPseudoManagement()
 {
-    console.log(config.irc.user.substr(config.irc.user.lastIndexOf("["), 6));
     if(config.irc.user.substr(config.irc.user.lastIndexOf("["), 6) === '[away]' && connected > 0)
     {
         nick(config.irc.user.substring(0,config.irc.user.lastIndexOf("[")));

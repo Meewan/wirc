@@ -288,14 +288,14 @@ function updateTopicOnChan(chan, topic)
 function backMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    if(data.sessionId)
+    if(data.channels)
     {
         document.getElementById('loginForm').style.display = 'none';
         main(data);
     }
     else if(data.error)
     {
-        if(data.error = 'wrongAuth')
+        if(data.error === 'wrongAuth')
         {
             document.getElementById('password').value = '';
         }
