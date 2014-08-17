@@ -41,7 +41,6 @@ function createServer()
             {
                 session = {connected : true}
                 connected ++;
-                session.sessionId = sessionId;
                 socket.room = 'logged';
                 socket.join(socket.room);
                 socket.emit('back', JSON.stringify({
