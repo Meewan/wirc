@@ -3,6 +3,7 @@ var socket;
 var currentChannel;
 var pseudo;
 var channels = new Array();
+var users =new Array();
 var idCount = 1;
 init();
 function init()
@@ -42,9 +43,10 @@ function main(data)
     socket.on('+mode', addModeMessageHandler);
     socket.on('-mode', remModeMessageHandler);
     socket.on('whois', whoisMessageHandler);
-    socket.on('error', ircErrorHandler);
+    socket.on('ircerror', ircErrorHandler);
     socket.on('action', actionMessageHandler);
     socket.on('pvtaction', privateActionMessageHandler);
+    socket.on('error', errorMessageHandler)
     pseudo = data.pseudo;
     for(var i = 0; i < data.channels.length; i++)
     {
@@ -70,12 +72,15 @@ function send(chan)
  */
 function createChannel(name)
 {
-    channels[name] = {
-        id: 'c_'+ idCount++,
-        name: name,
-        users : new  Array(),
-        history : undefined
-    };
+    if(channels[name] === undefined)
+    {
+        channels[name] = {
+            id: 'c_'+ idCount++,
+            name: name,
+            users : new  Array(),
+            history : undefined
+        };
+    }
     var chanDOM = '<div class="chanWrapper" id="chan' + channels[name].id + 'wrapper">';
         chanDOM += '<div class="chanUsers" id="chan' + channels[name].id + 'users">';
         chanDOM += '</div>';
@@ -233,12 +238,20 @@ function printMessage(date, src, chan, msg, type)
  * @param chan
  * @param users
  */
-function displayUserOnChan(chan, users)
+function displayUserOnChan(chan, userList)
 {
     var line = '';
-    for(var user in users)
+    for(var user in userList)
     {
-        line += '<div id="userChan' + channels[chan].id + user +'" class="user">' + users[user] + user + '</div>';
+        if(users[user] === undefined)
+        {
+            users[user] = {
+                id : 'u_' + idCount ++,
+                name : htmlSpecialChar(user)
+            }
+        }
+
+        line += '<div id="userChan' + channels[chan].id + users[user].id +'" class="user">' + userList[user] + users[user].name + '</div>';
     }
     document.getElementById('chan' + channels[chan].id + 'users').innerHTML = line;
 }
@@ -261,16 +274,20 @@ function updateUserOnChan(action, chan, usr, newName)
         pseudo = newName;
         document.getElementById('pseudo').innerHTML = pseudo;
     }
-    var user = htmlSpecialChar(usr);
+    var user = users[usr];
     var chanUser = null;
     for(var i = 0; i < chan.length; i++)
     {
         if(action === 'add')
         {
-            chanUser = document.getElementById('userChan' +channels[chan].id + user);
+            users[usr] = {
+                id : 'u_'+ idCount++,
+                name : htmlSpecialChar(usr)
+            };
+            chanUser = document.getElementById('userChan' +channels[chan].id + users[usr].id);
             if (chanUser === null)
             {
-                document.getElementById('chan' + channels[chan].id + 'users').innerHTML += '<div id="userChan' + channels[chan].id + user + '" class="user">' + user + '</div>';
+                document.getElementById('chan' + channels[chan].id + 'users').innerHTML += '<div id="userChan' + channels[chan].id + users[usr].id + '" class="user">' + users[usr].name + '</div>';
             }
             else
             {
@@ -280,7 +297,8 @@ function updateUserOnChan(action, chan, usr, newName)
         }
         else if (action === 'remove')
         {
-            chanUser = document.getElementById('userChan' + channels[chan].id + user);
+            chanUser = document.getElementById('userChan' + channels[chan].id + users[usr].id);
+            users[usr] = undefined;
             if (chanUser !== null)
             {
                 chanUser.style.display = 'none';
@@ -289,13 +307,17 @@ function updateUserOnChan(action, chan, usr, newName)
         }
         else if(action === 'nick')
         {
-            chanUser = document.getElementById('userChan' + channels[chan].id + user);
+            users[newName] = {
+                id : 'u_'+ idCount++,
+                name : htmlSpecialChar(newName)
+            };
+            chanUser = document.getElementById('userChan' + channels[chan].id + users[usr].id);
             if(chanUser !== null)
             {
-                chanUser.innerHTML = newName;
-                chanUser.id = 'userChan' + channels[chan].id + newName;
+                chanUser.innerHTML = users[newName].name;
+                chanUser.id = 'userChan' + channels[chan].id + users[newName].id;
             }
-
+            users[usr] = undefined;
         }
         chanUser = null;
     }
@@ -385,8 +407,8 @@ function quitMessageHandler(serialized)
 function kickMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    updateUserOnChan('remove',data.channel, data.target);
-    printMessage(data.date, '|<---', data.channel, data.target +' was kick by ' + data.by + (data.data ? 'reason : ' + data.data : ''), 'kickMessage');
+    updateUserOnChan("remove",data.channel, data.target);
+    printMessage(data.date, '|<---', data.channel, (data.target +' was kick by ' + data.by + (data.data ? 'reason : ' + data.data : '')), 'kickMessage');
 }
 
 function killMessageHandler(serialized)
@@ -459,10 +481,7 @@ function ircErrorHandler(serialized)
     var data = JSON.parse(serialized);
     printMessage(data.date, 'ERROR', currentChannel, data.data.command, 'error');
 }
-function errorMessageHandler(serialized)
-{   if(serialized)
-    {
-        var data = JSON.parse(serialized);
-        printMessage(data.date, ERROR, currentChannel, data.data.command, 'error');
-    }
+function errorMessageHandler(data)
+{
+    var data = JSON.parse(data);
 }

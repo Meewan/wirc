@@ -150,6 +150,7 @@ function startIRC(irc)
 
     client.addListener('names', function (chan, nicks)
     {
+
         var data =
         {
             type : 'names',
@@ -157,6 +158,7 @@ function startIRC(irc)
             channel : chan,
             data : nicks
         };
+        console.log('names : ' + JSON.stringify(data));
         storeInRedis(data);
         io.sockets.in('logged').emit(data.type, JSON.stringify(data));
     });
@@ -349,9 +351,8 @@ function startIRC(irc)
 
     client.addListener('error', function (error)
     {
-        var data =
-        {
-            type : 'error',
+        var data ={
+            type : 'ircerror',
             date : (new Date().getTime()),
             data :error
         };
