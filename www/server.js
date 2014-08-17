@@ -1,10 +1,10 @@
 var config ='';
 var serverConfigFile = 'config.json';
 var static = require('node-static');
+var connected = 0;
 var http = require('http');
 var crypto = require('crypto');
 var file = new(static.Server)();
-var sessions = new Array();
 var static = require('node-static');
 var http = require('http');
 var file = new(static.Server)();
@@ -33,20 +33,21 @@ function createServer()
     io = require('socket.io').listen(app);
     io.sockets.on('connection', function (socket)
     {
+        var session;
         socket.on('submitconnect', function (serialized)
         {
             data = JSON.parse(serialized);
             if (data.user.toLowerCase() === config.web.login.toLowerCase() && data.password === config.web.password)
             {
                 //on genere un token de session a partir de l'ip et de bruit (pas sécurisé d'un point de vue chiffrement mais suffisant)
-                var sessionToken = generateSessionToken(socket.handshake.address);
-                sessions[sessionToken] = {
-                    "connected": true
-                };
+                sessionId = generateSessionToken(socket.handshake.address);
+                session = {connected : true}
+                connected ++;
+                session.sessionId = sessionId;
                 socket.room = 'logged';
                 socket.join(socket.room);
                 socket.emit('back', JSON.stringify({
-                    "sessionId": sessionToken,
+                    "sessionId": sessionId,
                     channels: config.irc.channels,
                     pseudo : config.irc.user
                 }));
@@ -54,6 +55,7 @@ function createServer()
             }
             else
             {
+                session = {connected : false};
                 socket.emit('back',JSON.stringify(
                 {
                     "error": 'wrongAuth'
@@ -64,7 +66,7 @@ function createServer()
         socket.on('message', function(serialized)
         {
             var data = JSON.parse(serialized);
-            if(data.sessionId !== undefined && data.sessionId !== null && sessions[data.sessionId] !== null && sessions[data.sessionId] !== undefined &&sessions[data.sessionId].connected === true )
+            if( session !== undefined && session.connected === true )
             {
                 if(data.command === 'names')
                 {
@@ -91,17 +93,14 @@ function createServer()
             }
         });
 
-        socket.on('quit', function (serialized) {
-            var data = JSON.parse(serialized);
-            //TODO trouver un moyen pour deconecter les gens en cas de timeout
-            //var session = sessions[data.sessionId];
-            sessions = deleteFromArray(sessions, data.sessionId);
-            if (sessions.length == 0)
+        socket.on('disconnect', function () {
+            //sessions = deleteFromArray(sessions, session.sessionId);
+            if (connected > 0)
             {
-                nick(config.irc.user +'[away]');
+                connected --;
             }
-
-
+            session = undefined;
+            userPseudoManagement();
         });
     });
 }
@@ -125,11 +124,11 @@ function generateSessionToken(entropy)
 
 function userPseudoManagement()
 {
-    if(config.irc.user.substring(config.irc.user.lastIndexOf("[")) === '[away]' && sessions.length > 0)
+    if(config.irc.user.substr(config.irc.user.lastIndexOf("["), 6) === '[away]' && connected > 0)
     {
         nick(config.irc.user.substring(0,config.irc.user.lastIndexOf("[")-1));
     }
-    else if(sessions.length === 0)
+    else if(connected === 0)
     {
         nick(config.irc.user += '[away]');
     }

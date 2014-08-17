@@ -1,16 +1,14 @@
 "use strict";
 var socket;
-var sessionId;
 var currentChannel;
 var pseudo;
 init();
+window.onbeforeunload  = quitting;
 function init()
 {
     socket = io.connect();
     socket.on('back',backMessageHandler);
-    window.onbeforeunload = function (){
-        socket.emit('quit', JSON.serialize({data : sessionId}));
-    };
+
 }
 
 function submitForm()
@@ -84,7 +82,6 @@ function send(chan)
     var type = messageType(message);
     message = messageFilter(message, type);
     socket.emit('message', JSON.stringify({
-        sessionId : sessionId,
         command :type,
         channel : channel,
         message : message
@@ -147,7 +144,6 @@ function getArg0(message)
 function getTopic(channel)
 {
     socket.emit('message', JSON.stringify({
-        sessionId : sessionId,
         channel : channel,
         command : 'topic'
     }));
@@ -156,7 +152,6 @@ function getTopic(channel)
 function getNames(channel)
 {
     socket.emit('message', JSON.stringify({
-        sessionId : sessionId,
         channel : channel,
         command : 'names'
     }));
@@ -295,7 +290,6 @@ function backMessageHandler(serialized)
     var data = JSON.parse(serialized);
     if(data.sessionId)
     {
-        sessionId = data.sessionId;
         document.getElementById('loginForm').style.display = 'none';
         main(data);
     }
