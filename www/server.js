@@ -124,9 +124,10 @@ function generateSessionToken(entropy)
 
 function userPseudoManagement()
 {
+    console.log(config.irc.user.substr(config.irc.user.lastIndexOf("["), 6));
     if(config.irc.user.substr(config.irc.user.lastIndexOf("["), 6) === '[away]' && connected > 0)
     {
-        nick(config.irc.user.substring(0,config.irc.user.lastIndexOf("[")-1));
+        nick(config.irc.user.substring(0,config.irc.user.lastIndexOf("[")));
     }
     else if(connected === 0)
     {
