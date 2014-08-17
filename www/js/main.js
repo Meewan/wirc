@@ -2,8 +2,9 @@
 var socket;
 var currentChannel;
 var pseudo;
+var channels = new Array();
+var idCount = 1;
 init();
-window.onbeforeunload  = quitting;
 function init()
 {
     socket = io.connect();
@@ -47,46 +48,54 @@ function main(data)
     pseudo = data.pseudo;
     for(var i = 0; i < data.channels.length; i++)
     {
-        currentChannel = data.channels[i];
-        var channel = data.channels[i].replace('#','_');
-        var chanDOM = '<div class="chanWrapper" id="chan' + channel + 'wrapper">';
-            chanDOM += '<div class="chanUsers" id="chan' + channel + 'users">';
-            chanDOM += '</div>';
-            chanDOM += '<div class="chanMain" id="chan' + channel + 'main">';
-                chanDOM += '<div class="chanTopic" id="chan' + channel + 'topic">';
-                chanDOM += '</div>';
-                chanDOM += '<table class="chanData" id="chan' + channel + 'data">';
-                chanDOM += '</table>';
-                chanDOM += '<div class="chanLower" id="chan' + channel + 'lower">';
-                    chanDOM += '<span id="pseudo" >';
-                        chanDOM += pseudo;
-                    chanDOM += '</span>';
-                    chanDOM += '<input class="chanInput" type="text" id="chan' + channel + 'input" onKeyPress="if (event.keyCode == 13){send(\'' + channel + '\')}"  />';
-                chanDOM += '</div>';
-            chanDOM += '</div>';
-        chanDOM += '</div>';
-        document.getElementById('irc').innerHTML += chanDOM;
-        if(i !== 0)
-        {
-            document.getElementById('chan' + data.channels[i-1].replace('#','_') + 'wrapper').style.display = 'none';
-        }
-        getTopic(data.channels[i]);
-        getNames(data.channels[i]);
+     createChannel(data.channels[i]);
     }
 }
 
 function send(chan)
 {
-    var channel = chan.replace('_','#');
-    var message = document.getElementById('chan' + chan + 'input').value;
+    var message = document.getElementById('chan' + channels[chan].id + 'input').value;
     var type = messageType(message);
     message = messageFilter(message, type);
     socket.emit('message', JSON.stringify({
         command :type,
-        channel : channel,
+        channel : chan,
         message : message
     }));
-    document.getElementById('chan' + chan + 'input').value = '';
+    document.getElementById('chan' + channels[chan].id + 'input').value = '';
+}
+/**
+ * creating a channel object and the html code associated
+ * @param name
+ */
+function createChannel(name)
+{
+    channels[name] = {
+        id: 'c_'+ idCount++,
+        name: name,
+        users : new  Array(),
+        history : undefined
+    };
+    var chanDOM = '<div class="chanWrapper" id="chan' + channels[name].id + 'wrapper">';
+        chanDOM += '<div class="chanUsers" id="chan' + channels[name].id + 'users">';
+        chanDOM += '</div>';
+        chanDOM += '<div class="chanMain" id="chan' + channels[name].id + 'main">';
+            chanDOM += '<div class="chanTopic" id="chan' + channels[name].id + 'topic">';
+            chanDOM += '</div>';
+            chanDOM += '<table class="chanData" id="chan' + channels[name].id + 'data">';
+            chanDOM += '</table>';
+            chanDOM += '<div class="chanLower" id="chan' + channels[name].id + 'lower">';
+                chanDOM += '<span id="pseudo" >';
+                    chanDOM += pseudo;
+                chanDOM += '</span>';
+            chanDOM += '<input class="chanInput" type="text" id="chan' + channels[name].id + 'input" onKeyPress="if (event.keyCode == 13){send(\'' + channels[name].name + '\')}"  />';
+            chanDOM += '</div>';
+        chanDOM += '</div>';
+    chanDOM += '</div>';
+    document.getElementById('irc').innerHTML += chanDOM;
+    setFocus(name);
+    getTopic(name);
+    getNames(name);
 }
 
 function messageType(message)
@@ -141,6 +150,10 @@ function getArg0(message)
         return message.substring(0, end).toLocaleLowerCase();
     }
 }
+/**
+ * ask for the topic of the channel
+ * @param channel
+ */
 function getTopic(channel)
 {
     socket.emit('message', JSON.stringify({
@@ -149,15 +162,30 @@ function getTopic(channel)
     }));
 }
 
+/**
+ * ask the names of the connected people
+ * @param channel
+ */
 function getNames(channel)
 {
     socket.emit('message', JSON.stringify({
         channel : channel,
         command : 'names'
     }));
-    console.log('names');
 }
-
+/**
+ * display non the current channel and display the asked channel
+ * @param channel
+ */
+function setFocus (channel)
+{
+    if(currentChannel)
+    {
+        document.getElementById('chan' + currentChannel.id + 'wrapper').style.display = 'none';
+    }
+    currentChannel = channels[channel];
+    document.getElementById('chan' + currentChannel.id + 'wrapper').style.display = 'block';
+}
 function htmlSpecialChar(text)
 {
     var map = {
@@ -181,7 +209,8 @@ function htmlSpecialChar(text)
  */
 function printMessage(date, src, chan, msg, type)
 {
-    var channel = chan.replace('#','_');
+    var channel = channels[chan];
+    var id = channel.id;
     var sDate = new Date(date);
     var hdate = (sDate.getHours() <10 ? '[0': '[' ) +sDate.getHours() + (sDate.getMinutes() <10 ? ':0': ':' ) + sDate.getMinutes() + (sDate.getSeconds() <10 ? ':0': ':' ) + sDate.getSeconds() + ']';
     var source = htmlSpecialChar(src);
@@ -197,7 +226,7 @@ function printMessage(date, src, chan, msg, type)
             line += message;
         line += '</td>';
     line += '</tr>';
-    document.getElementById('chan' + channel + 'data').innerHTML += line;
+    document.getElementById('chan' + id + 'data').innerHTML += line;
 }
 /**
  * redraw the userlist for a channel
@@ -206,14 +235,12 @@ function printMessage(date, src, chan, msg, type)
  */
 function displayUserOnChan(chan, users)
 {
-    var channel = chan.replace('#','_');
     var line = '';
     for(var user in users)
     {
-        line += '<div id="userChan' +channel + user +'" class="user">' + users[user] + user + '</div>';
+        line += '<div id="userChan' + channels[chan].id + user +'" class="user">' + users[user] + user + '</div>';
     }
-    document.getElementById('chan' + channel + 'users').innerHTML = line;
-
+    document.getElementById('chan' + channels[chan].id + 'users').innerHTML = line;
 }
 /**
  * add (if action == add) or remove (if action == remove) or change nick (if action == nick) a user from the chan or an
@@ -238,13 +265,12 @@ function updateUserOnChan(action, chan, usr, newName)
     var chanUser = null;
     for(var i = 0; i < chan.length; i++)
     {
-        var channel = chan[i].replace('#','_');
         if(action === 'add')
         {
-            chanUser = document.getElementById('userChan' +channel + user);
+            chanUser = document.getElementById('userChan' +channels[chan].id + user);
             if (chanUser === null)
             {
-                document.getElementById('chan' + channel + 'users').innerHTML += '<div id="userChan' + channel + user + '" class="user">' + user + '</div>';
+                document.getElementById('chan' + channels[chan].id + 'users').innerHTML += '<div id="userChan' + channels[chan].id + user + '" class="user">' + user + '</div>';
             }
             else
             {
@@ -254,7 +280,7 @@ function updateUserOnChan(action, chan, usr, newName)
         }
         else if (action === 'remove')
         {
-            chanUser = document.getElementById('userChan' + channel + user);
+            chanUser = document.getElementById('userChan' + channels[chan].id + user);
             if (chanUser !== null)
             {
                 chanUser.style.display = 'none';
@@ -263,11 +289,11 @@ function updateUserOnChan(action, chan, usr, newName)
         }
         else if(action === 'nick')
         {
-            chanUser = document.getElementById('userChan' +channel + user);
+            chanUser = document.getElementById('userChan' + channels[chan].id + user);
             if(chanUser !== null)
             {
                 chanUser.innerHTML = newName;
-                chanUser.id = 'userChan' +channel + newName;
+                chanUser.id = 'userChan' + channels[chan].id + newName;
             }
 
         }
@@ -281,8 +307,7 @@ function updateUserOnChan(action, chan, usr, newName)
  */
 function updateTopicOnChan(chan, topic)
 {
-    var channel = chan.replace('#','_');
-    document.getElementById('chan' + channel + 'topic').innerHTML = '<span class="topicWord" >' + htmlSpecialChar(topic) + '</span>';
+    document.getElementById('chan' + channels[chan].id + 'topic').innerHTML = '<span class="topicWord" >' + htmlSpecialChar(topic) + '</span>';
 }
 //////////////////////////////////socket handler////////////////////////////////////////////////////////////////////////
 function backMessageHandler(serialized)
@@ -330,7 +355,10 @@ function namesMessageHandler(serialized)
 function topicMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    updateTopicOnChan(data.channel, data.data);
+    if(data.data)
+    {
+        updateTopicOnChan(data.channel, data.data);
+    }
 }
 
 function joinMessageHandler(serialized)
@@ -432,7 +460,9 @@ function ircErrorHandler(serialized)
     printMessage(data.date, 'ERROR', currentChannel, data.data.command, 'error');
 }
 function errorMessageHandler(serialized)
-{
-    var data = JSON.parse(serialized);
-    printMessage(data.date, ERROR, currentChannel, data.data.command, 'error');
+{   if(serialized)
+    {
+        var data = JSON.parse(serialized);
+        printMessage(data.date, ERROR, currentChannel, data.data.command, 'error');
+    }
 }
