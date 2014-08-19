@@ -46,7 +46,7 @@ function main(data)
     socket.on('ircerror', ircErrorHandler);
     socket.on('action', actionMessageHandler);
     socket.on('pvtaction', privateActionMessageHandler);
-    socket.on('error', errorMessageHandler)
+    socket.on('error', errorMessageHandler);//magic
     pseudo = data.pseudo;
     for(var i = 0; i < data.channels.length; i++)
     {
@@ -483,5 +483,5 @@ function ircErrorHandler(serialized)
 }
 function errorMessageHandler(data)
 {
-    var data = JSON.parse(data);
+    var data = JSON.parse(data);//magic if you manage the error it il not ork
 }
