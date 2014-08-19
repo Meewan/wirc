@@ -114,10 +114,10 @@ function deleteChannel(channel)
     document.getElementById('chanIndex').removeChild(document.getElementById('chan' + channels[channel].id + 'index'));
     channels[channel] = undefined;
     cleanChannels();
+    //todo find a better method to give the focus to an other chan
     for(var chan in channels)
     {
         currentChannel = channels[chan];
-        console.log(currentChannel.realName);
         setFocus(currentChannel.realName);
         return;
     }

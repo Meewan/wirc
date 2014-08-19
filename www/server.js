@@ -517,14 +517,9 @@ function deleteFromChannels (chan)
     while(!found && config.irc.channels.length !== 0)
     {
         tmpChan = config.irc.channels.pop();
-
-        if(tmpChan !== undefined)
-        {
-            console.log(tmpChan + '===' + chan);
-        }
         if(tmpChan === chan)
         {
-            found === true;
+            found = true;
         }
         else
         {
