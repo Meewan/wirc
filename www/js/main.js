@@ -10,22 +10,8 @@ function init()
 {
     socket = io.connect();
     socket.on('back',backMessageHandler);
-
-}
-
-function submitForm()
-{
-    var login = document.getElementById('login').value;
-    var password = document.getElementById('password').value;
-    socket.emit('submitconnect', JSON.stringify({
-        "user" : login,
-        "password" : password
-    }));
-}
-
-function main(data)
-{
-    //creation des callbacks
+    socket.on('error', errorMessageHandler);//magic
+    //creation des callbacks irc
     socket.on('connected', connectedMessageHandler);
     socket.on('motd', motdMessageHandler);
     socket.on('names', namesMessageHandler);
@@ -46,8 +32,24 @@ function main(data)
     socket.on('ircerror', ircErrorHandler);
     socket.on('action', actionMessageHandler);
     socket.on('pvtaction', privateActionMessageHandler);
-    socket.on('error', errorMessageHandler);//magic
+
+
+}
+
+function submitForm()
+{
+    var login = document.getElementById('login').value;
+    var password = document.getElementById('password').value;
+    socket.emit('submitconnect', JSON.stringify({
+        "user" : login,
+        "password" : password
+    }));
+}
+
+function main(data)
+{
     pseudo = data.pseudo;
+
     for(var i = 0; i < data.channels.length; i++)
     {
      createChannel(data.channels[i]);
@@ -90,7 +92,7 @@ function createChannel(name)
             chanDOM += '<table class="chanData" id="chan' + channels[name].id + 'data">';
             chanDOM += '</table>';
             chanDOM += '<div class="chanLower" id="chan' + channels[name].id + 'lower">';
-                chanDOM += '<span id="pseudo" >';
+                chanDOM += '<span id="' + channels[name].id + 'pseudo" >';
                     chanDOM += pseudo;
                 chanDOM += '</span>';
             chanDOM += '<input class="chanInput" type="text" id="chan' + channels[name].id + 'input" onKeyPress="if (event.keyCode == 13){send(\'' + channels[name].name + '\')}"  />';
@@ -98,6 +100,8 @@ function createChannel(name)
         chanDOM += '</div>';
     chanDOM += '</div>';
     document.getElementById('irc').innerHTML += chanDOM;
+    document.getElementById('chanIndex').innerHTML += '<div class="chanindex" id="chan' + channels[name].id + 'index" onclick="setFocus(\'' + name + '\')" >' + channels[name].name +'</div>';
+
     setFocus(name);
     getTopic(name);
     getNames(name);
@@ -273,7 +277,11 @@ function updateUserOnChan(action, chan, usr, newName)
     if(action === 'nick' && usr === pseudo)
     {
         pseudo = newName;
-        document.getElementById('pseudo').innerHTML = pseudo;
+        for(var chanpseudo in channels)
+        {
+            document.getElementById(channels[chanpseudo].id +'pseudo').innerHTML = pseudo;
+        }
+
     }
     var user = users[usr];
     var chanUser = null;
