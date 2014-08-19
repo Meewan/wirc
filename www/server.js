@@ -68,7 +68,7 @@ function createServer()
                 {
                     names(data.channel);
                 }
-                else if(data.command === "topic")
+                else if(data.command === 'topic')
                 {
                     topic(data.channel);
                 }
@@ -80,6 +80,14 @@ function createServer()
                 else if(data.command === 'nick')
                 {
                     nick(data.message);
+                }
+                else if(data.command === 'join')
+                {
+                    join(data.message);
+                }
+                else if(data.command === 'part')
+                {
+                    part(data.channel, data.message);
                 }
                 else
                 {
@@ -426,7 +434,7 @@ function join(channel)
 function part(channel, reason)
 {
     client.part(channel,(reason === null || reason === undefined ? '' : reason));
-    deleteFromArray(config.irc.channels, config.irc.channels.indexof(channel));
+    deleteFromChannels(channel);
     fs.writeFile(serverConfigFile, JSON.stringify(config));
 }
 
@@ -499,5 +507,33 @@ function deleteFromArray(array, position)
         }
     }
     return tmpArray;
+}
+
+function deleteFromChannels (chan)
+{
+    var tmp = new Array();
+    var found = false;
+    var tmpChan;
+    while(!found && config.irc.channels.length !== 0)
+    {
+        tmpChan = config.irc.channels.pop();
+
+        if(tmpChan !== undefined)
+        {
+            console.log(tmpChan + '===' + chan);
+        }
+        if(tmpChan === chan)
+        {
+            found === true;
+        }
+        else
+        {
+            tmp.push(tmpChan);
+        }
+    }
+    while(tmp.length !== 0 )
+    {
+        config.irc.channels.push(tmp.pop())
+    }
 }
 

@@ -78,7 +78,8 @@ function createChannel(name)
     {
         channels[name] = {
             id: 'c_'+ idCount++,
-            name: name,
+            name: htmlSpecialChar(name),
+            realName : name,
             users : new  Array(),
             history : undefined
         };
@@ -95,7 +96,7 @@ function createChannel(name)
                 chanDOM += '<span id="' + channels[name].id + 'pseudo" >';
                     chanDOM += pseudo;
                 chanDOM += '</span>';
-            chanDOM += '<input class="chanInput" type="text" id="chan' + channels[name].id + 'input" onKeyPress="if (event.keyCode == 13){send(\'' + channels[name].name + '\')}"  />';
+            chanDOM += '<input class="chanInput" type="text" id="chan' + channels[name].id + 'input" onKeyPress="if (event.keyCode == 13){send(\'' + channels[name].realName + '\')}"  />';
             chanDOM += '</div>';
         chanDOM += '</div>';
     chanDOM += '</div>';
@@ -105,6 +106,22 @@ function createChannel(name)
     setFocus(name);
     getTopic(name);
     getNames(name);
+}
+
+function deleteChannel(channel)
+{
+    document.getElementById('irc').removeChild(document.getElementById('chan' + channels[channel].id + 'wrapper'));
+    document.getElementById('chanIndex').removeChild(document.getElementById('chan' + channels[channel].id + 'index'));
+    channels[channel] = undefined;
+    cleanChannels();
+    for(var chan in channels)
+    {
+        currentChannel = channels[chan];
+        console.log(currentChannel.realName);
+        setFocus(currentChannel.realName);
+        return;
+    }
+
 }
 
 function messageType(message)
@@ -130,6 +147,14 @@ function messageType(message)
             else if(arg0 == '/nick')
             {
                 return 'nick';
+            }
+            else if(arg0 === '/join')
+            {
+                return 'join';
+            }
+            else if(arg0 === '/part')
+            {
+                return 'part';
             }
         }
     }
@@ -206,6 +231,19 @@ function htmlSpecialChar(text)
     };
 
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+function cleanChannels()
+{
+    var tmp = new Array();
+    for(var chan in channels)
+    {
+        if(channels[chan] != undefined)
+        {
+            tmp[chan] = channels[chan];
+        }
+    }
+    channels = tmp;
 }
 ///////////////////////////////////Display Logic////////////////////////////////////////////////////////////////////////
 /**
@@ -294,7 +332,7 @@ function updateUserOnChan(action, chan, usr, newName)
                 name : htmlSpecialChar(usr),
                 right : new Array()
             };
-            users[usr].right[channels[chan].name] ='';
+            users[usr].right[channels[chan].realName] ='';
             chanUser = document.getElementById('userChan' +channels[chan].id + users[usr].id);
             if (chanUser === null)
             {
@@ -398,14 +436,27 @@ function topicMessageHandler(serialized)
 
 function joinMessageHandler(serialized)
 {
+
     var data = JSON.parse(serialized);
-    updateUserOnChan('add',data.channel, data.from);
-    printMessage(data.date, '--->', data.channel,  data.from + ' joined the chan ', 'joinMessage');
+    if(data.from === pseudo)
+    {
+        createChannel(data.channel);
+    }
+    else
+    {
+        updateUserOnChan('add',data.channel, data.from);
+        printMessage(data.date, '--->', data.channel,  data.from + ' joined the chan ', 'joinMessage');
+    }
+
 }
 
 function partMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
+    if(data.from === pseudo)
+    {
+        deleteChannel(data.channel);
+    }
     updateUserOnChan('remove',data.channel, data.from);
     printMessage(data.date, '|<---', data.channel, data.from + ' parted the chan '+ (data.data ? data.data : ''), 'partMessage');
 }
