@@ -158,7 +158,6 @@ function startIRC(irc)
             channel : chan,
             data : nicks
         };
-        console.log('names : ' + JSON.stringify(data));
         storeInRedis(data);
         io.sockets.in('logged').emit(data.type, JSON.stringify(data));
     });

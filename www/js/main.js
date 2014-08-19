@@ -248,11 +248,11 @@ function displayUserOnChan(chan, userList)
             users[user] = {
                 id : 'u_' + idCount ++,
                 name : htmlSpecialChar(user),
-                right : (userList[user] === undefined ? '' : userList[user])
-            }
+                right : new Array()
+            };
         }
-
-        line += '<div id="userChan' + channels[chan].id + users[user].id +'" class="user">' + userList[user] + users[user].name + '</div>';
+        users[user].right[chan] = (userList[user] == undefined ? '' : userList[user]);
+        line += '<div id="userChan' + channels[chan].id + users[user].id +'" class="user">' + users[user].right[chan] + users[user].name + '</div>';
     }
     document.getElementById('chan' + channels[chan].id + 'users').innerHTML = line;
 }
@@ -284,8 +284,9 @@ function updateUserOnChan(action, chan, usr, newName)
             users[usr] = {
                 id : 'u_'+ idCount++,
                 name : htmlSpecialChar(usr),
-                right : ''
+                right : new Array()
             };
+            users[usr].right[channels[chan].name] ='';
             chanUser = document.getElementById('userChan' +channels[chan].id + users[usr].id);
             if (chanUser === null)
             {
@@ -312,12 +313,13 @@ function updateUserOnChan(action, chan, usr, newName)
             users[newName] = {
                 id : 'u_'+ idCount++,
                 name : htmlSpecialChar(newName),
-                right : users[usr].right
+                right : new Array()
             };
+            users[newName].right[chan] = users[usr].right[chan];
             chanUser = document.getElementById('userChan' + channels[chan].id + users[usr].id);
             if(chanUser !== null)
             {
-                chanUser.innerHTML = users[newName].right + users[newName].name;
+                chanUser.innerHTML = users[newName].right[chan] + users[newName].name;
                 chanUser.id = 'userChan' + channels[chan].id + users[newName].id;
             }
             users[usr] = undefined;
