@@ -66,15 +66,11 @@ function send(chan)
         channel : chan,
         message : message
     }));
-    console.log({
-        command :type,
-        channel : chan,
-        message : message
-    });
     document.getElementById('chan' + channels[chan].id + 'input').value = '';
 }
 /**
  * creating a channel object and the html code associated
+
  * @param name
  */
 function createChannel(name)
@@ -437,7 +433,7 @@ function connectedMessageHandler(serialized)
 function motdMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    printMessage(data.date, 'MOTD', currentChannel, data.data, 'motdMessage');
+    printMessage(data.date, 'MOTD', currentChannel.realName, data.data, 'motdMessage');
 }
 
 function namesMessageHandler(serialized)
@@ -522,7 +518,7 @@ function actionMessageHandler(serialized)
 function noticeMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    printMessage(data.date, data.from, (data.target ? data.target : currentChannel), data.data, 'noticeMessage');
+    printMessage(data.date, data.from, (data.target ? data.target : currentChannel.realName), data.data, 'noticeMessage');
 }
 
 function pingMessageHandler(serialized)
@@ -562,13 +558,14 @@ function remModeMessageHandler(serialized)
 function whoisMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    printMessage(data.date, '=-=', currentChannel,  + data.data.nick + ' ' + data.data.user + data.data.host, 'whois');
+    printMessage(data.date, '=-=', currentChannel.realName,  + data.data.nick + ' ' + data.data.user + data.data.host, 'whois');
 }
 
 function ircErrorHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    printMessage(data.date, 'ERROR', currentChannel, data.data.command, 'error');
+    //TODO construire une tableau associatif des messages d'erreurs
+    printMessage(data.date, 'ERROR', currentChannel.realName, data.data.command, 'error');
 }
 function errorMessageHandler(data)
 {
