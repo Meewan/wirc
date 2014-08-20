@@ -52,7 +52,7 @@ function main(data)
 
     for(var i = 0; i < data.channels.length; i++)
     {
-     createChannel(data.channels[i]);
+     createChannel(data.channels[i], 'chan');
     }
 }
 
@@ -61,9 +61,21 @@ function send(chan)
     var message = document.getElementById('chan' + channels[chan].id + 'input').value;
     var type = messageType(message);
     message = messageFilter(message, type);
+    var channel = chan;
+    if(type === 'pm')
+    {
+        type = 'message';
+        channel = message.target;
+        message = message.message;
+    }
+    if(channels[chan].type === 'pm' && type === 'part')
+    {
+        deleteChannel(chan);
+        return;
+    }
     socket.emit('message', JSON.stringify({
         command :type,
-        channel : chan,
+        channel : channel,
         message : message
     }));
     document.getElementById('chan' + channels[chan].id + 'input').value = '';
@@ -73,7 +85,7 @@ function send(chan)
 
  * @param name
  */
-function createChannel(name)
+function createChannel(name, type)
 {
     if(channels[name] === undefined)
     {
@@ -82,6 +94,7 @@ function createChannel(name)
             name: htmlSpecialChar(name),
             realName : name,
             users : new  Array(),
+            type : type,
             history : undefined
         };
     }
@@ -161,6 +174,10 @@ function messageType(message)
             {
                 return 'kick';
             }
+            else if(arg0 === '/msg' || arg0 === '/message')
+            {
+                return 'pm';
+            }
         }
     }
 }
@@ -182,6 +199,18 @@ function messageFilter(message, command)
             reason = '';
         }
         return {target : target, reason : reason};
+    }
+    else if(command === 'pm')
+    {
+        var tmp = message.substring((message.indexOf(' ') + 1));
+        var message = tmp.substring((tmp.indexOf(' ') + 1));
+        var target = tmp.substring(0,(tmp.indexOf(' ')));
+        if(channels[target] === undefined)
+        {
+            createChannel(target, 'pm');
+        }
+
+        return {target : target, message : message};
     }
     else
     {
@@ -457,7 +486,7 @@ function joinMessageHandler(serialized)
     var data = JSON.parse(serialized);
     if(data.from === pseudo)
     {
-        createChannel(data.channel);
+        createChannel(data.channel, 'chan');
     }
     else
     {
@@ -536,13 +565,21 @@ function nickMessageHandler(serialized)
 function pmMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    printMessage(data.date, data.from, data.channel, data.data, 'pmMessage');
+    if(channels[data.from] === undefined)
+    {
+        createChannel(data.from, 'pm');
+    }
+    printMessage(data.date, data.from, data.from, data.data, 'pmMessage');
 }
 
 function privateActionMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    printMessage(data.date, data.from, data.channel, data.data, 'pmAction');
+    if(channels[data.from] === undefined)
+    {
+        createChannel(data.from, 'pm');
+    }
+    printMessage(data.date, data.from, data.from, data.data, 'pmAction');
 }
 
 function addModeMessageHandler(serialized)
