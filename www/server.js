@@ -89,6 +89,10 @@ function createServer()
                 {
                     part(data.channel, data.message);
                 }
+                else if(data.command == 'kick')
+                {
+                    kick(data.channel, data.message.target, data.message.reason);
+                }
                 else
                 {
                     messageListener(config.irc.user, data.channel, data.message, null);
@@ -225,7 +229,7 @@ function startIRC(irc)
         io.sockets.in('logged').emit(data.type, JSON.stringify(data));
     });
 
-    client.addListener('kick', function (channel, nick, by, reason, message)
+    client.addListener('kick', function (channel, nick, reason, by, message)
     {
         var data =
         {
@@ -418,7 +422,18 @@ function topic(channel, topic)
     {
         client.send('TOPIC', channel);
     }
+}
 
+function kick(channel, target, reason)
+{
+    if(topic !== null && topic !== undefined)
+    {
+        client.send('KICK', channel, target);
+    }
+    else
+    {
+        client.send('KICK', channel, target, ':'+reason);
+    }
 }
 function say(target, message)
 {

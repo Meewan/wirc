@@ -66,6 +66,11 @@ function send(chan)
         channel : chan,
         message : message
     }));
+    console.log({
+        command :type,
+        channel : chan,
+        message : message
+    });
     document.getElementById('chan' + channels[chan].id + 'input').value = '';
 }
 /**
@@ -156,6 +161,10 @@ function messageType(message)
             {
                 return 'part';
             }
+            else if(arg0 === '/kick')
+            {
+                return 'kick';
+            }
         }
     }
 }
@@ -165,6 +174,18 @@ function messageFilter(message, command)
     if (command === 'message')
     {
         return message;
+    }
+    else if (command === 'kick')
+    {
+        var tmp = message.substring((message.indexOf(' ') + 1));
+        var reason = tmp.substring((tmp.indexOf(' ') + 1));
+        var target = tmp.substring(0,(tmp.indexOf(' ')));
+        if(target === '')
+        {
+            target = reason;
+            reason = '';
+        }
+        return {target : target, reason : reason};
     }
     else
     {
@@ -471,8 +492,12 @@ function quitMessageHandler(serialized)
 function kickMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
+    if(data.target === pseudo)
+    {
+        deleteChannel(data.channel);
+    }
     updateUserOnChan("remove",data.channel, data.target);
-    printMessage(data.date, '|<---', data.channel, (data.target +' was kick by ' + data.by + (data.data ? 'reason : ' + data.data : '')), 'kickMessage');
+    printMessage(data.date, '|<---', data.channel, (data.target +' was kick by ' + data.by + (data.data ? ' reason : ' + data.data : '')), 'kickMessage');
 }
 
 function killMessageHandler(serialized)
