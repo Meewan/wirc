@@ -164,29 +164,13 @@ function messageType(message)
             {
                 return 'action';
             }
-            else if(arg0 == '/nick')
-            {
-                return 'nick';
-            }
-            else if(arg0 === '/join')
-            {
-                return 'join';
-            }
-            else if(arg0 === '/part')
-            {
-                return 'part';
-            }
-            else if(arg0 === '/kick')
-            {
-                return 'kick';
-            }
             else if(arg0 === '/msg' || arg0 === '/message')
             {
                 return 'pm';
             }
-            else if(arg0 === '/topic')
+            else
             {
-               return 'topic';
+                return arg0.substring(1);
             }
         }
     }
