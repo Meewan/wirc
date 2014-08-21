@@ -93,6 +93,10 @@ function createServer()
                 {
                     topic(data.channel, data.message);
                 }
+                else if(data.command === 'pass')
+                {
+                    pass(data.message);
+                }
                 else
                 {
                     messageListener(config.irc.user, data.channel, data.message, null);
@@ -422,7 +426,6 @@ function names(channel)
 }
 function topic(channel, topic)
 {
-    console.log(topic);
     if(topic !== null && topic !== undefined)
     {
         client.send('TOPIC', channel, topic);
@@ -443,6 +446,14 @@ function kick(channel, target, reason)
     {
         client.send('KICK', channel, target, ':'+reason);
     }
+}
+function pass(pass)
+{
+    if(pass === undefined || pass === null)
+    {
+        pass = '';
+    }
+    client.send('PASS', pass);
 }
 function say(target, message)
 {

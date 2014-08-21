@@ -72,7 +72,7 @@ function send(chan)
         type = 'message';
         channel = message.target;
         message = message.message;
-        if(type === part)
+        if(type === 'part')
         {
             deleteChannel(chan);
             return;
@@ -172,6 +172,10 @@ function messageType(message)
             {
                 return 'pm';
             }
+            else if(arg0 === '/identify' || arg0 === '/password')
+            {
+                return 'pass';
+            }
             else
             {
                 return arg0.substring(1);
@@ -182,7 +186,15 @@ function messageType(message)
 
 function executeMessage(message, type)
 {
-
+    console.log(type);
+    if(type === 'pm')
+    {
+        console.log(message);
+        if(channels[message.target] === undefined)
+        {
+            createChannel(message.target, 'pm');
+        }
+    }
 }
 function messageFilter(message, command)
 {
