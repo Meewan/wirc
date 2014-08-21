@@ -68,10 +68,6 @@ function createServer()
                 {
                     names(data.channel);
                 }
-                else if(data.command === 'topic')
-                {
-                    topic(data.channel);
-                }
                 else if(data.command === 'action')
                 {
                     actionListener(config.irc.user, data.channel, data.message, null);
@@ -92,6 +88,10 @@ function createServer()
                 else if(data.command == 'kick')
                 {
                     kick(data.channel, data.message.target, data.message.reason);
+                }
+                else if(data.command === 'topic')
+                {
+                    topic(data.channel, data.message);
                 }
                 else
                 {
@@ -414,6 +414,7 @@ function names(channel)
 }
 function topic(channel, topic)
 {
+    console.log(topic);
     if(topic !== null && topic !== undefined)
     {
         client.send('TOPIC', channel, topic);

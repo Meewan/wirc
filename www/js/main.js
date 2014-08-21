@@ -61,6 +61,7 @@ function send(chan)
     var message = document.getElementById('chan' + channels[chan].id + 'input').value;
     var type = messageType(message);
     message = messageFilter(message, type);
+    executeMessage(message, type);
     var channel = chan;
     if(type === 'pm')
     {
@@ -73,6 +74,11 @@ function send(chan)
         deleteChannel(chan);
         return;
     }
+    console.log({
+        command :type,
+        channel : channel,
+        message : message
+    });
     socket.emit('message', JSON.stringify({
         command :type,
         channel : channel,
@@ -178,10 +184,18 @@ function messageType(message)
             {
                 return 'pm';
             }
+            else if(arg0 === '/topic')
+            {
+               return 'topic';
+            }
         }
     }
 }
 
+function executeMessage(message, type)
+{
+
+}
 function messageFilter(message, command)
 {
     if (command === 'message')
@@ -211,6 +225,19 @@ function messageFilter(message, command)
         }
 
         return {target : target, message : message};
+    }
+    else if(command === 'topic')
+    {
+        var message = message.substring((message.indexOf(' ') + 1));
+        if (message === '/topic')
+        {
+            return '';
+        }
+        else
+        {
+            return message;
+        }
+
     }
     else
     {
