@@ -50,6 +50,12 @@ function main(data)
 {
     pseudo = data.pseudo;
 
+    users[pseudo] ={
+        id : 'u_' + idCount++,
+        name : htmlSpecialChar(pseudo),
+        right : new Array()
+    };
+
     for(var i = 0; i < data.channels.length; i++)
     {
      createChannel(data.channels[i], 'chan');
@@ -186,10 +192,8 @@ function messageType(message)
 
 function executeMessage(message, type)
 {
-    console.log(type);
     if(type === 'pm')
     {
-        console.log(message);
         if(channels[message.target] === undefined)
         {
             createChannel(message.target, 'pm');
@@ -329,6 +333,12 @@ function cleanChannels()
  */
 function printMessage(date, src, chan, msg, type)
 {
+    console.log('printMessage');
+    console.log(date);
+    console.log(src);
+    console.log(chan);
+    console.log(msg);
+    console.log(type);
     var channel = channels[chan];
     var id = channel.id;
     var sDate = new Date(date);
@@ -405,11 +415,11 @@ function updateUserOnChan(action, chan, usr, newName)
                 name : htmlSpecialChar(usr),
                 right : new Array()
             };
-            users[usr].right[channels[chan].realName] ='';
-            chanUser = document.getElementById('userChan' +channels[chan].id + users[usr].id);
+            users[usr].right[channels[chan[i]].realName] ='';
+            chanUser = document.getElementById('userChan' +channels[chan[i]].id + users[usr].id);
             if (chanUser === null)
             {
-                document.getElementById('chan' + channels[chan].id + 'users').innerHTML += '<div id="userChan' + channels[chan].id + users[usr].id + '" class="user">' + users[usr].name + '</div>';
+                document.getElementById('chan' + channels[chan[i]].id + 'users').innerHTML += '<div id="userChan' + channels[chan[i]].id + users[usr].id + '" class="user">' + users[usr].name + '</div>';
             }
             else
             {
@@ -419,7 +429,7 @@ function updateUserOnChan(action, chan, usr, newName)
         }
         else if (action === 'remove')
         {
-            chanUser = document.getElementById('userChan' + channels[chan].id + users[usr].id);
+            chanUser = document.getElementById('userChan' + channels[chan[i]].id + users[usr].id);
             users[usr] = undefined;
             if (chanUser !== null)
             {
@@ -429,19 +439,21 @@ function updateUserOnChan(action, chan, usr, newName)
         }
         else if(action === 'nick')
         {
-            users[newName] = {
-                id : 'u_'+ idCount++,
-                name : htmlSpecialChar(newName),
-                right : new Array()
-            };
-            users[newName].right[chan] = users[usr].right[chan];
-            chanUser = document.getElementById('userChan' + channels[chan].id + users[usr].id);
+            if(users[usr] !== undefined )
+            {
+                users[newName] = {
+                    id : users[usr].id,
+                    name : htmlSpecialChar(newName),
+                    right : users[usr].right
+                };
+                users[usr] = undefined;
+            }
+            chanUser = document.getElementById('userChan' + channels[chan[i]].id + users[newName].id);
             if(chanUser !== null)
             {
-                chanUser.innerHTML = users[newName].right[chan] + users[newName].name;
-                chanUser.id = 'userChan' + channels[chan].id + users[newName].id;
+                chanUser.innerHTML = users[newName].right[chan[i]] + users[newName].name;
+                chanUser.id = 'userChan' + channels[chan[i]].id + users[newName].id;
             }
-            users[usr] = undefined;
         }
         chanUser = null;
     }
@@ -585,8 +597,14 @@ function pingMessageHandler(serialized)
 function nickMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
+    console.log(data);
     updateUserOnChan('nick', data.to, data.from, data.data);
-    printMessage(data.date, '=-=' , data.to , data.from + ' is now known as ' + data.data, 'nickMessage');
+    console.log('to ' + data.to.length);
+    for(var i = 0; data.to.length; i++)
+    {
+
+        printMessage(data.date, '=-=' , data.to[i] , data.from + ' is now known as ' + data.data, 'nickMessage');
+    }
 }
 
 function pmMessageHandler(serialized)

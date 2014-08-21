@@ -107,12 +107,15 @@ function createServer()
 
         socket.on('disconnect', function () {
             //sessions = deleteFromArray(sessions, session.sessionId);
-            if (connected > 0)
+            if(session !== undefined && session.connected === true)
             {
-                connected --;
+                if (connected > 0)
+                {
+                    connected --;
+                }
+                userPseudoManagement();
             }
             session = undefined;
-            userPseudoManagement();
         });
     });
 }
@@ -317,6 +320,11 @@ function startIRC(irc)
             to : channels,
             data :newnick
         };
+        if(oldnick === config.irc.user)
+        {
+            config.irc.user = newNick;
+            fs.writeFile(serverConfigFile, JSON.stringify(config));
+        }
         storeInRedis(data);
         io.sockets.in('logged').emit(data.type, JSON.stringify(data));
     });
@@ -409,8 +417,6 @@ function messageListener(from, channel, text, message)
 function nick(newNick)
 {
     client.send("NICK", newNick);
-    config.irc.user = newNick;
-    fs.writeFile(serverConfigFile, JSON.stringify(config));
 }
 function names(channel)
 {
