@@ -410,7 +410,15 @@ function nick(newNick)
 }
 function names(channel)
 {
-    client.send("NAMES", channel);
+    if (channel === undefined || channel === null || channel === '')
+    {
+        client.send("NAMES");
+    }
+    else
+    {
+        client.send("NAMES", channel);
+    }
+
 }
 function topic(channel, topic)
 {

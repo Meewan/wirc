@@ -56,6 +56,10 @@ function main(data)
     }
 }
 
+/**
+ * Management of all te commands issued by the user
+ * @param chan
+ */
 function send(chan)
 {
     var message = document.getElementById('chan' + channels[chan].id + 'input').value;
@@ -68,11 +72,11 @@ function send(chan)
         type = 'message';
         channel = message.target;
         message = message.message;
-    }
-    if(channels[chan].type === 'pm' && type === 'part')
-    {
-        deleteChannel(chan);
-        return;
+        if(type === part)
+        {
+            deleteChannel(chan);
+            return;
+        }
     }
     console.log({
         command :type,
