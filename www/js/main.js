@@ -84,11 +84,6 @@ function send(chan)
             return;
         }
     }
-    console.log({
-        command :type,
-        channel : channel,
-        message : message
-    });
     socket.emit('message', JSON.stringify({
         command :type,
         channel : channel,
@@ -333,12 +328,6 @@ function cleanChannels()
  */
 function printMessage(date, src, chan, msg, type)
 {
-    console.log('printMessage');
-    console.log(date);
-    console.log(src);
-    console.log(chan);
-    console.log(msg);
-    console.log(type);
     var channel = channels[chan];
     var id = channel.id;
     var sDate = new Date(date);
@@ -586,7 +575,8 @@ function actionMessageHandler(serialized)
 function noticeMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    printMessage(data.date, data.from, (data.target ? data.target : currentChannel.realName), data.data, 'noticeMessage');
+    console.log(data);
+    printMessage(data.date, data.from, currentChannel.realName, data.data, 'noticeMessage');
 }
 
 function pingMessageHandler(serialized)
@@ -597,10 +587,8 @@ function pingMessageHandler(serialized)
 function nickMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    console.log(data);
     updateUserOnChan('nick', data.to, data.from, data.data);
-    console.log('to ' + data.to.length);
-    for(var i = 0; data.to.length; i++)
+    for(var i = 0; i < data.to.length; i++)
     {
 
         printMessage(data.date, '=-=' , data.to[i] , data.from + ' is now known as ' + data.data, 'nickMessage');
