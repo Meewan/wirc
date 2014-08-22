@@ -311,6 +311,7 @@ function startIRC(irc)
         if (oldnick === config.irc.user)
         {
             config.irc.user = newnick;
+            fs.writeFile(serverConfigFile, JSON.stringify(config));
         }
         var data =
         {
@@ -320,11 +321,6 @@ function startIRC(irc)
             to : channels,
             data :newnick
         };
-        if(oldnick === config.irc.user)
-        {
-            config.irc.user = newNick;
-            fs.writeFile(serverConfigFile, JSON.stringify(config));
-        }
         storeInRedis(data);
         io.sockets.in('logged').emit(data.type, JSON.stringify(data));
     });
