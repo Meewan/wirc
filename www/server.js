@@ -97,6 +97,14 @@ function createServer()
                 {
                     pass(data.message);
                 }
+                else if(data.command === 'whois')
+                {
+                    whois(data.message);
+                }
+                else if(data.command === 'mode')
+                {
+                    mode(data.channel, data.message.mode, data.message.user);
+                }
                 else
                 {
                     messageListener(config.irc.user, data.channel, data.message, null);
@@ -479,7 +487,18 @@ function action(channel, text)
 {
     client.action(channel, text);
 }
+function mode(channel, mode, user)
+{
+    if(user)
+    {
+        client.send('MODE', channel, mode, user);
+    }
+    else
+    {
+        client.send('MODE', channel, mode);
+    }
 
+}
 function whois(target)
 {
     client.whois(target);

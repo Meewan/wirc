@@ -53,6 +53,7 @@ function main(data)
     users[pseudo] ={
         id : 'u_' + idCount++,
         name : htmlSpecialChar(pseudo),
+        mode: new Array(),
         right : new Array()
     };
 
@@ -84,6 +85,7 @@ function send(chan)
             return;
         }
     }
+
     socket.emit('message', JSON.stringify({
         command :type,
         channel : channel,
@@ -236,7 +238,18 @@ function messageFilter(message, command)
         {
             return message;
         }
-
+    }
+    else if(command === 'mode')
+    {
+        var tmp = message.substring((message.indexOf(' ') + 1));
+        var target = tmp.substring((tmp.indexOf(' ') + 1));
+        var mode = tmp.substring(0,(tmp.indexOf(' ')));
+        if(mode === '')
+        {
+            mode = target;
+            target = '';
+        }
+        return {target : target, mode : mode};
     }
     else
     {
@@ -292,6 +305,11 @@ function setFocus (channel)
     currentChannel = channels[channel];
     document.getElementById('chan' + currentChannel.id + 'wrapper').style.display = 'block';
 }
+/**
+ * filter the input string in order to return a safe string
+ * @param text
+ * @returns {XML|string|void}
+ */
 function htmlSpecialChar(text)
 {
     var map = {
@@ -316,6 +334,18 @@ function cleanChannels()
         }
     }
     channels = tmp;
+}
+/**
+ *
+ * @param name
+ */
+function whois(name)
+{
+    socket.emit('message', JSON.stringify({
+        command : 'whois',
+        channel : '',
+        message : name
+    }));
 }
 ///////////////////////////////////Display Logic////////////////////////////////////////////////////////////////////////
 /**
@@ -348,9 +378,9 @@ function printMessage(date, src, chan, msg, type)
     document.getElementById('chan' + id + 'data').innerHTML += line;
 }
 /**
- * redraw the userlist for a channel
+ * redraw the userList for a channel
  * @param chan
- * @param users
+ * @param userList
  */
 function displayUserOnChan(chan, userList)
 {
@@ -364,6 +394,7 @@ function displayUserOnChan(chan, userList)
                 name : htmlSpecialChar(user),
                 right : new Array()
             };
+            whois(user);
         }
         users[user].right[chan] = (userList[user] == undefined ? '' : userList[user]);
         line += '<div id="userChan' + channels[chan].id + users[user].id +'" class="user">' + users[user].right[chan] + users[user].name + '</div>';
@@ -402,8 +433,10 @@ function updateUserOnChan(action, chan, usr, newName)
             users[usr] = {
                 id : 'u_'+ idCount++,
                 name : htmlSpecialChar(usr),
+                mode : new Array(),
                 right : new Array()
             };
+            whois(usr);
             users[usr].right[channels[chan[i]].realName] ='';
             chanUser = document.getElementById('userChan' +channels[chan[i]].id + users[usr].id);
             if (chanUser === null)
@@ -428,13 +461,15 @@ function updateUserOnChan(action, chan, usr, newName)
         }
         else if(action === 'nick')
         {
-            if(users[usr] !== undefined )
+            if(users[usr] !== undefined && usr !== newName )
             {
                 users[newName] = {
                     id : users[usr].id,
                     name : htmlSpecialChar(newName),
+                    mode : users[usr].mode,
                     right : users[usr].right
                 };
+                whois(newName);
                 users[usr] = undefined;
             }
             chanUser = document.getElementById('userChan' + channels[chan[i]].id + users[newName].id);
@@ -455,6 +490,55 @@ function updateUserOnChan(action, chan, usr, newName)
 function updateTopicOnChan(chan, topic)
 {
     document.getElementById('chan' + channels[chan].id + 'topic').innerHTML = '<span class="topicWord" >' + htmlSpecialChar(topic) + '</span>';
+}
+
+function updateMode(chan, mode, user, argument)
+{
+    if(users[user].mode[chan] === undefined)
+    {
+        users[user].mode[chan] ='';
+    }
+    if (argument === '+')
+    {
+
+        users[user].mode[chan] += mode;
+    }
+    else if (argument === '-')
+    {
+        users[user].mode[chan] = users[user].mode[chan].replace(mode, '');
+    }
+
+    var right = rightForUser(chan, user);
+    if (right !== users[user].right[chan])
+    {
+        users[user].right[chan] = right;
+        updateUserOnChan('nick', chan, user, user);
+    }
+}
+
+function rightForUser(chan, user)
+{
+    var right = users[user].mode[chan];
+    if(right.indexOf('o') !== -1)
+    {
+        return '@';
+    }
+    else if(right.indexOf('O') !== -1)
+    {
+        return '@';
+    }
+    else if(right.indexOf('h') !== -1)
+    {
+        return '%';
+    }
+    else if(right.indexOf('v') !== -1)
+    {
+        return '+';
+    }
+    else
+    {
+        return '';
+    }
 }
 //////////////////////////////////socket handler////////////////////////////////////////////////////////////////////////
 function backMessageHandler(serialized)
@@ -575,7 +659,6 @@ function actionMessageHandler(serialized)
 function noticeMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    console.log(data);
     printMessage(data.date, data.from, currentChannel.realName, data.data, 'noticeMessage');
 }
 
@@ -617,18 +700,53 @@ function privateActionMessageHandler(serialized)
 
 function addModeMessageHandler(serialized)
 {
-    //todo modes
+    var data = JSON.parse(serialized);
+    if(data.to !== undefined)
+    {
+        updateMode(data.channel, data.data,data.to,'+');
+    }
+    printMessage(data.date, '=-=', data.channel, data.from + ' set mode +' + data.data + ' on '+ (data.to === undefined ? data.channel : data.to) );
 }
 
 function remModeMessageHandler(serialized)
 {
-    //todo modes
+    var data = JSON.parse(serialized);
+    if(data.to !== undefined)
+    {
+        updateMode(data.channel, data.data,data.to,'-');
+        getNames(data.channel);
+    }
+    printMessage(data.date, '=-=', data.channel, data.from + ' set mode -' + data.data + ' on '+ (data.to === undefined ? data.channel : data.to) );
 }
 
 function whoisMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    printMessage(data.date, '=-=', currentChannel.realName,  + data.data.nick + ' ' + data.data.user + data.data.host, 'whois');
+
+    var whoisString = data.data.nick + '<' + data.data.user  +'@'+ data.data.host + '> "' + data.data.realname +'"';
+
+    var whoisChannels = '';
+    var flag = true;
+    for(var chan in data.data.channels)
+    {
+        if(!flag)
+        {
+            whoisChannels += ' and ';
+        }
+        whoisChannels += chan;
+        var flag = false;
+    }
+    if(users[data.to].whoisString !== undefined)
+    {
+        printMessage(data.date, '---', currentChannel.realName,  'Start of WHOIS information for ' + data.data.nick, 'whois');
+        printMessage(data.date, '=-=', currentChannel.realName, whoisString, 'whois');
+        printMessage(data.date, '=-=', currentChannel.realName,  data.data.nick + ' : member of ' + whoisChannels, 'whois');
+        printMessage(data.date, '=-=', currentChannel.realName,  data.data.nick + ' : attached to ' + data.data.server + ' "'+data.data.serverinfo + '"', 'whois');
+        printMessage(data.date, '=-=', currentChannel.realName,  data.data.nick + ' : idle for ' + data.data.idle + ' seconds', 'whois');
+        printMessage(data.date, '---', currentChannel.realName,  'End of WHOIS information for ' + data.data.nick, 'whois');
+    }
+    users[data.to].whoisString = whoisString;
+
 }
 
 function ircErrorHandler(serialized)
