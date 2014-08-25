@@ -190,14 +190,14 @@ function getNextHistory(chan)
         channels[chan].currentLine =  document.getElementById('chan' + channels[chan].id + 'input').value;
     }
     counter ++;
-    if (counter < channels[chan].history.length)
+    if (counter < channels[chan].history.length && channels[chan].history.length !== 0)
     {
         channels[chan].historyCounter = counter;
         return channels[chan].history[channels[chan].historyCounter];
     }
     else
     {
-        return channels[chan].history[channels[chan].historyCounter];
+        return channels[chan].currentLine;
     }
 }
 
