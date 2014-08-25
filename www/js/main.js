@@ -1,4 +1,5 @@
 "use strict";
+var HISTORY_LENGTH = 50;
 var socket;
 var currentChannel;
 var pseudo;
@@ -70,6 +71,7 @@ function main(data)
 function send(chan)
 {
     var message = document.getElementById('chan' + channels[chan].id + 'input').value;
+    updateHistory(message, chan);
     var type = messageType(message);
     message = messageFilter(message, type);
     executeMessage(message, type);
@@ -108,7 +110,9 @@ function createChannel(name, type)
             realName : name,
             users : new  Array(),
             type : type,
-            history : undefined
+            history : Array(),
+            historyCounter : -1,
+            currentLine : ''
         };
     }
     var chanDOM = '<div class="chanWrapper" id="chan' + channels[name].id + 'wrapper">';
@@ -123,7 +127,7 @@ function createChannel(name, type)
                 chanDOM += '<span id="' + channels[name].id + 'pseudo" >';
                     chanDOM += pseudo;
                 chanDOM += '</span>';
-            chanDOM += '<input class="chanInput" type="text" id="chan' + channels[name].id + 'input" onKeyPress="if (event.keyCode == 13){send(\'' + channels[name].realName + '\')}"  />';
+            chanDOM += '<input class="chanInput" type="text" id="chan' + channels[name].id + 'input" onKeyPress="action(event, \'' + name + '\')"  />';
             chanDOM += '</div>';
         chanDOM += '</div>';
     chanDOM += '</div>';
@@ -133,6 +137,78 @@ function createChannel(name, type)
     setFocus(name);
     getTopic(name);
     getNames(name);
+}
+
+function action (event,name)
+{
+    if(event.keyCode === 38)//fleche du haut
+    {
+        document.getElementById('chan' + channels[name].id + 'input').value = getNextHistory(name);
+    }
+    else if(event.keyCode === 40)//fleche du bas
+    {
+        document.getElementById('chan' + channels[name].id + 'input').value = getPreviousHistory(name);
+    }
+    else
+    {
+        channels[name].historyCounter = -1;
+    }
+    if(event.keyCode === 13)
+    {
+        send(name);
+    }
+}
+
+function getPreviousHistory(chan)
+{
+    var counter = channels[chan].historyCounter;
+    counter --;
+    if(channels[chan].historyCounter === -1 || counter === -1)
+    {
+        if(counter === -1)
+        {
+            channels[chan].historyCounter = counter;
+        }
+        else if(channels[chan].historyCounter === -1)
+        {
+            channels[chan].currentLine = document.getElementById('chan' + channels[chan].id + 'input').value;
+        }
+        return channels[chan].currentLine;
+    }
+    else
+    {
+        channels[chan].historyCounter = counter;
+    }
+    return channels[chan].history[channels[chan].historyCounter];
+}
+
+function getNextHistory(chan)
+{
+    var counter = channels[chan].historyCounter;
+    if(channels[chan].historyCounter === -1)
+    {
+        channels[chan].currentLine =  document.getElementById('chan' + channels[chan].id + 'input').value;
+    }
+    counter ++;
+    if (counter < channels[chan].history.length)
+    {
+        channels[chan].historyCounter = counter;
+        return channels[chan].history[channels[chan].historyCounter];
+    }
+    else
+    {
+        return channels[chan].history[channels[chan].historyCounter];
+    }
+}
+
+function  updateHistory(message, chan)
+{
+    channels[chan].currentLine ='';
+    channels[chan].historyCounter = -1;
+    if(channels[chan].history.unshift(message) > HISTORY_LENGTH)
+    {
+        channels[chan].history.pop();
+    }
 }
 
 function deleteChannel(channel)
