@@ -49,6 +49,7 @@ function submitForm()
 
 function main(data)
 {
+
     pseudo = data.pseudo;
 
     users[pseudo] ={
@@ -121,12 +122,14 @@ function createChannel(name, type)
         chanDOM += '<div class="chanMain" id="chan' + channels[name].id + 'main">';
             chanDOM += '<div class="chanTopic" id="chan' + channels[name].id + 'topic">';
             chanDOM += '</div>';
-            chanDOM += '<table class="chanData" id="chan' + channels[name].id + 'data">';
-            chanDOM += '</table>';
+            chanDOM += '<div class="chanDataWrapper">';
+                chanDOM += '<table class="chanData" id="chan' + channels[name].id + 'data">';
+                chanDOM += '</table>';
+            chanDOM += '</div>';
             chanDOM += '<div class="chanLower" id="chan' + channels[name].id + 'lower">';
-                chanDOM += '<span id="' + channels[name].id + 'pseudo" >';
+                chanDOM += '<div class="chanPseudo" id="' + channels[name].id + 'pseudo" >';
                     chanDOM += pseudo;
-                chanDOM += '</span>';
+                chanDOM += '</div>';
             chanDOM += '<input class="chanInput" type="text" id="chan' + channels[name].id + 'input" onKeyPress="action(event, \'' + name + '\')"  />';
             chanDOM += '</div>';
         chanDOM += '</div>';
@@ -623,6 +626,7 @@ function backMessageHandler(serialized)
     if(data.channels)
     {
         document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('irc').style.display = 'block';
         main(data);
     }
     else if(data.error)
