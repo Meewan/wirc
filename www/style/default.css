@@ -125,7 +125,7 @@ body
     width: 80px;
     text-align: center;
 }
-.plainMessage .messageSource
+.plainMessage .messageSource,.actionMessage .messageSource
 {
     padding-right:10px;
     text-align: right;
@@ -141,4 +141,10 @@ body
 {
     padding-left: 10px;
     width:80px;
+    font-style: normal;
+}
+
+.actionMessage
+{
+    font-style:italic;
 }

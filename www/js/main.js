@@ -282,7 +282,14 @@ function messageFilter(message, command)
 {
     if (command === 'message')
     {
-        return message;
+        if(message.charAt(0) === '/' && message.charAt(1) === '/')
+        {
+            return message.substr(1);
+        }
+        else
+        {
+            return message;
+        }
     }
     else if (command === 'kick')
     {
