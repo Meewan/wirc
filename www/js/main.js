@@ -1,5 +1,6 @@
 "use strict";
 var HISTORY_LENGTH = 50;
+var SCROLL_TOLERANCE = 10;
 var socket;
 var currentChannel;
 var pseudo;
@@ -112,19 +113,20 @@ function createChannel(name, type)
             users : new  Array(),
             type : type,
             history : Array(),
+            scrolled: false,
             historyCounter : -1,
             currentLine : ''
         };
     }
     var chanDOM = '<div class="chanWrapper" id="chan' + channels[name].id + 'wrapper">';
-        chanDOM += '<div class="chanUsersWrapper">';
+        chanDOM += '<div class="chanUsersWrapper" >';
             chanDOM += '<table class="chanUsers" id="chan' + channels[name].id + 'users">';
             chanDOM += '</table>';
         chanDOM += '</div>';
         chanDOM += '<div class="chanMain" id="chan' + channels[name].id + 'main">';
             chanDOM += '<div class="chanTopic" id="chan' + channels[name].id + 'topic">';
             chanDOM += '</div>';
-            chanDOM += '<div class="chanDataWrapper">';
+            chanDOM += '<div class="chanDataWrapper" id="chan' + channels[name].id + 'dataWrapper" onscroll="updateScrollStatut(\'' + name + '\',this)">';
                 chanDOM += '<table class="chanData" id="chan' + channels[name].id + 'data">';
                 chanDOM += '</table>';
             chanDOM += '</div>';
@@ -393,6 +395,28 @@ function setFocus (channel)
     currentChannel = channels[channel];
     document.getElementById('chan' + currentChannel.id + 'wrapper').style.display = 'block';
 }
+
+function updateScroll(chan)
+{
+    if(!channels[chan].scrolled)
+    {
+        var element = document.getElementById('chan' + channels[chan].id + 'dataWrapper');
+        element.scrollTop = element.scrollHeight;
+    }
+}
+
+function updateScrollStatut(chan,element)
+{
+    if( element.scrollTopMax < (element.scrollTop + SCROLL_TOLERANCE))
+    {
+        channels[chan].scrolled = false;
+    }
+    else
+    {
+        channels[chan].scrolled = true;
+    }
+
+}
 /**
  * filter the input string in order to return a safe string
  * @param text
@@ -464,6 +488,7 @@ function printMessage(date, src, chan, msg, type)
         line += '</td>';
     line += '</tr>';
     document.getElementById('chan' + id + 'data').innerHTML += line;
+    updateScroll(chan);
 }
 /**
  * redraw the userList for a channel
@@ -499,7 +524,6 @@ function displayUserOnChan(chan, userList)
  */
 function updateUserOnChan(action, chan, usr, newName)
 {
-    console.log('update');
     if(!(chan instanceof Array))
     {
         chan = [chan];
@@ -709,8 +733,12 @@ function partMessageHandler(serialized)
     {
         deleteChannel(data.channel);
     }
-    updateUserOnChan('remove',data.channel, data.from);
-    printMessage(data.date, '|<---', data.channel, data.from + ' parted the chan '+ (data.data ? data.data : ''), 'partMessage');
+    else
+    {
+        updateUserOnChan('remove',data.channel, data.from);
+        printMessage(data.date, '|<---', data.channel, data.from + ' parted the chan '+ (data.data ? data.data : ''), 'partMessage');
+    }
+
 }
 
 function quitMessageHandler(serialized)
