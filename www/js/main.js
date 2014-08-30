@@ -117,7 +117,9 @@ function createChannel(name, type)
         };
     }
     var chanDOM = '<div class="chanWrapper" id="chan' + channels[name].id + 'wrapper">';
-        chanDOM += '<div class="chanUsers" id="chan' + channels[name].id + 'users">';
+        chanDOM += '<div class="chanUsersWrapper">';
+            chanDOM += '<table class="chanUsers" id="chan' + channels[name].id + 'users">';
+            chanDOM += '</table>';
         chanDOM += '</div>';
         chanDOM += '<div class="chanMain" id="chan' + channels[name].id + 'main">';
             chanDOM += '<div class="chanTopic" id="chan' + channels[name].id + 'topic">';
@@ -476,7 +478,7 @@ function displayUserOnChan(chan, userList)
             whois(user);
         }
         users[user].right[chan] = (userList[user] == undefined ? '' : userList[user]);
-        line += '<div id="userChan' + channels[chan].id + users[user].id +'" class="user">' + users[user].right[chan] + users[user].name + '</div>';
+        line += '<tr id="userChan' + channels[chan].id + users[user].id +'" class="user"><td class="userRightSymbol" id="userSymbol' + channels[chan].id + users[user].id + '">' + users[user].right[chan] +'</td><td id="userDisplayName' + channels[chan].id + users[user].id + '">' + users[user].name + '</td></tr>';
     }
     document.getElementById('chan' + channels[chan].id + 'users').innerHTML = line;
 }
@@ -490,16 +492,18 @@ function displayUserOnChan(chan, userList)
  */
 function updateUserOnChan(action, chan, usr, newName)
 {
+    console.log('update');
     if(!(chan instanceof Array))
     {
         chan = [chan];
     }
     if(action === 'nick' && usr === pseudo)
     {
+
         pseudo = newName;
         for(var chanpseudo in channels)
         {
-            document.getElementById(channels[chanpseudo].id +'pseudo').innerHTML = pseudo;
+            document.getElementById( channels[chanpseudo].id + 'pseudo').innerHTML = pseudo;
         }
 
     }
@@ -517,10 +521,11 @@ function updateUserOnChan(action, chan, usr, newName)
             };
             whois(usr);
             users[usr].right[channels[chan[i]].realName] ='';
+
             chanUser = document.getElementById('userChan' +channels[chan[i]].id + users[usr].id);
             if (chanUser === null)
             {
-                document.getElementById('chan' + channels[chan[i]].id + 'users').innerHTML += '<div id="userChan' + channels[chan[i]].id + users[usr].id + '" class="user">' + users[usr].name + '</div>';
+                document.getElementById('chan' + channels[chan[i]].id + 'users').innerHTML += '<tr id="userChan' + channels[chan[i]].id + users[usr].id +'" class="user"><td class="userRightSymbol" id="userSymbol' + channels[chan[i]].id + users[usr].id + '">' + users[usr].right[chan[i]] +'</td><td id="userDisplayName' + channels[chan[i]].id + users[usr].id + '">' + users[usr].name + '</td></tr>';
             }
             else
             {
@@ -554,7 +559,9 @@ function updateUserOnChan(action, chan, usr, newName)
             chanUser = document.getElementById('userChan' + channels[chan[i]].id + users[newName].id);
             if(chanUser !== null)
             {
-                chanUser.innerHTML = users[newName].right[chan[i]] + users[newName].name;
+                var displayName = document.getElementById('userDisplayName' + channels[chan[i]].id + users[newName].id).innerHTML = users[newName].name;
+                displayName.id = 'userDisplayName' + channels[chan[i]].id + users[newName].id;
+                document.getElementById('userSymbol' + channels[chan[i]].id + users[newName].id).id = 'userSymbol' + channels[chan[i]].id + users[newName].id;
                 chanUser.id = 'userChan' + channels[chan[i]].id + users[newName].id;
             }
         }
@@ -814,7 +821,7 @@ function whoisMessageHandler(serialized)
             whoisChannels += ' and ';
         }
         whoisChannels += chan;
-        var flag = false;
+        flag = false;
     }
     if(users[data.to].whoisString !== undefined)
     {

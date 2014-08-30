@@ -75,7 +75,7 @@ body
     margin-right: 5%;
 }
 
-.chanUsers
+.chanUsersWrapper
 {
     overflow: auto;
     float:left;
@@ -91,6 +91,10 @@ body
     margin-bottom: 0.2em;
     margin-top: 0.2em;
     overflow: hidden;
+}
+.user
+{
+    height:1.2em;
 }
 #chanIndex
 {
