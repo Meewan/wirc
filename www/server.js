@@ -39,7 +39,7 @@ function createServer()
             data = JSON.parse(serialized);
             if (data.user.toLowerCase() === config.web.login.toLowerCase() && data.password === config.web.password)
             {
-                session = {connected : true}
+                session = {connected : true};
                 connected ++;
                 socket.room = 'logged';
                 socket.join(socket.room);
@@ -56,6 +56,25 @@ function createServer()
                 {
                     "error": 'wrongAuth'
                 }));
+            }
+        });
+
+        socket.on('systemHistory', function(serialized)
+        {
+            var data = JSON.parse(serialized);
+            if( session !== undefined && session.connected === true )
+            {
+                if(data.command === 'history')
+                {
+                    getFromRedis(data.channel, data.offset, data.length, function(redisData, err)
+                    {
+                        socket.emit('systemHistory', JSON.stringify({
+                            channel : data.channel,
+                            error : err,
+                            data : redisData
+                        }));
+                    });
+                }
             }
         });
 
@@ -505,10 +524,24 @@ function whois(target)
 }
 //-----------------------------listeners------------------------------------------------------------------------//
 ///////////////////////////////////redis logic//////////////////////////////////////////////////////////////////////////
+
 function startRedis(redis)
 {
     redisClient = redis.createClient();
 
+}
+
+function getFromRedis(chan,offset, range, callback)
+{
+    var start = offset;
+    var end = offset + range;
+
+    if(!(start === end ) )
+    {
+        redisClient.lrange('chan_' + chan.replace('#',''), start, end, function (err, data){
+            callback(data, err);
+        });
+    };
 }
 
 function storeInRedis(data)

@@ -1,5 +1,9 @@
 "use strict";
+
+//TODO corriger le cas de smessages broadcasté
+var debug = true;
 var HISTORY_LENGTH = 50;
+var HISTORY_STEP = 50;
 var SCROLL_TOLERANCE = 10;
 var socket;
 var currentChannel;
@@ -34,6 +38,7 @@ function init()
     socket.on('ircerror', ircErrorHandler);
     socket.on('action', actionMessageHandler);
     socket.on('pvtaction', privateActionMessageHandler);
+    socket.on('systemHistory', systemHistoryHandler);
 
 
 }
@@ -114,7 +119,9 @@ function createChannel(name, type)
             type : type,
             history : Array(),
             scrolled: false,
+            lineCounter : 0,
             historyCounter : -1,
+            historyLock : true,
             currentLine : ''
         };
     }
@@ -142,6 +149,7 @@ function createChannel(name, type)
     document.getElementById('chanIndex').innerHTML += '<div class="chanindex" id="chan' + channels[name].id + 'index" onclick="setFocus(\'' + name + '\')" >' + channels[name].name +'</div>';
 
     setFocus(name);
+    loadHistory(name);
     getTopic(name);
     getNames(name);
 }
@@ -407,7 +415,12 @@ function updateScroll(chan)
 
 function updateScrollStatut(chan,element)
 {
-    if( element.scrollTopMax < (element.scrollTop + SCROLL_TOLERANCE))
+    if( (element.scrollTop - SCROLL_TOLERANCE) < 0 && !channels[chan].historyLock)
+    {
+        channels[chan].historyLock = true;
+        loadHistory(chan);
+    }
+    if( element.scrollTopMax < (element.scrollTop + SCROLL_TOLERANCE))// if e are a the bottom of the chan
     {
         channels[chan].scrolled = false;
     }
@@ -416,6 +429,16 @@ function updateScrollStatut(chan,element)
         channels[chan].scrolled = true;
     }
 
+}
+
+function loadHistory(chan)
+{
+        socket.emit('systemHistory', JSON.stringify({
+            command : 'history',
+            channel : chan,
+            length : HISTORY_STEP,
+            offset : channels[chan].lineCounter
+        }));
 }
 /**
  * filter the input string in order to return a safe string
@@ -489,6 +512,93 @@ function printMessage(date, src, chan, msg, type)
     line += '</tr>';
     document.getElementById('chan' + id + 'data').innerHTML += line;
     updateScroll(chan);
+}
+
+function printHistory (historyData)
+{
+    //fonction de dessin pour une ligne d'historique
+    var stringify = function(date, src, msg, type)
+    {
+        var sDate = new Date(date);
+        var hdate = (sDate.getHours() <10 ? '[0': '[' ) +sDate.getHours() + (sDate.getMinutes() <10 ? ':0': ':' ) + sDate.getMinutes() + (sDate.getSeconds() <10 ? ':0': ':' ) + sDate.getSeconds() + ']';
+        var source = htmlSpecialChar(src);
+        var message = htmlSpecialChar(msg);
+        var line = '<tr class="message ' + type + '">';
+            line += '<td class="messageTime">';
+                line +=  hdate;
+            line += '</td>';
+            line += '<td class="messageSource">';
+                line += source;
+            line += '</td>';
+            line += '<td class="messageData">';
+                line += message;
+            line += '</td>';
+        line += '</tr>';
+        return line;
+    };
+    var output = '';
+    var data = null;
+    while(historyData.length > 0)
+    {
+        data = JSON.parse(historyData.pop());
+        if(data.type !== 'names' && data.type !== 'whois')
+        {
+            if(data.type === 'message')
+            {
+                output += stringify(data.date, data.from, data.data, 'plainMessage');
+            }
+            else if(data.type === 'action')
+            {
+                output += stringify(data.date, data.from, data.data, 'actionMessage');
+            }
+            else if(data.type === '+mode')
+            {
+                output += stringify(data.date, '=-=', data.from + ' set mode +' + data.data + ' on '+ (data.to === undefined ? data.channel : data.to) );
+            }
+            else if(data.type === '-mode')
+            {
+                output += stringify(data.date, '=-=', data.from + ' set mode -' + data.data + ' on '+ (data.to === undefined ? data.channel : data.to) );
+            }
+            else if(data.type === 'nick')
+            {
+                output += stringify(data.date, '=-=', data.from + ' is now known as ' + data.data, 'nickMessage');
+            }
+            else if(data.type === 'join')
+            {
+                output += stringify(data.date, '--->',  data.from + ' joined the chan ', 'joinMessage');
+            }
+            else if(data.type === 'part')
+            {
+                output += stringify(data.date, '|<---', data.from + ' parted the chan '+ (data.data ? data.data : ''), 'partMessage');
+            }
+            else if(data.type === 'kick')
+            {
+                output += stringify(data.date, '|<---', (data.target +' was kick by ' + data.by + (data.data ? ' reason : ' + data.data : '')), 'kickMessage');
+            }
+            else if(data.type === 'kill')
+            {
+                output += stringify(data.date, '<---', data.target + ' quited the network '+ (data.data ? data.data : ''), 'killMessage');
+            }
+            else if(data.type === 'quit')
+            {
+                output += stringify(data.date, '<---', data.from + ' quited the network '+ (data.data ? data.data : ''), 'quitMessage');
+            }
+        }
+        channels[data.channel].lineCounter++;
+    }
+    if(data != null)
+    {
+        var chan = channels[data.channel];
+        var wrapper = document.getElementById('chan' + chan.id + 'dataWrapper');
+        var oldHeight = wrapper.scrollHeight;
+        var chanDisplay = document.getElementById('chan' + chan.id + 'data');
+        chanDisplay.innerHTML = output + chanDisplay.innerHTML;
+        var newHeight = wrapper.scrollHeight;
+        wrapper.scrollTop = newHeight - (newHeight - oldHeight);
+        chan.historyLock = false;
+    }
+
+
 }
 /**
  * redraw the userList for a channel
@@ -698,12 +808,15 @@ function motdMessageHandler(serialized)
 function namesMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
+    channels[data.channel].lineCounter ++;
     displayUserOnChan(data.channel, data.data);
 }
 
 function topicMessageHandler(serialized)
 {
+    //TODO prevenir l'utilisateur que le topic a changé
     var data = JSON.parse(serialized);
+    channels[data.channel].lineCounter ++;
     if(data.data)
     {
         updateTopicOnChan(data.channel, data.data);
@@ -723,6 +836,7 @@ function joinMessageHandler(serialized)
         updateUserOnChan('add',data.channel, data.from);
         printMessage(data.date, '--->', data.channel,  data.from + ' joined the chan ', 'joinMessage');
     }
+    channels[data.channel].lineCounter ++;
 
 }
 
@@ -737,6 +851,7 @@ function partMessageHandler(serialized)
     {
         updateUserOnChan('remove',data.channel, data.from);
         printMessage(data.date, '|<---', data.channel, data.from + ' parted the chan '+ (data.data ? data.data : ''), 'partMessage');
+        channels[data.channel].lineCounter ++;
     }
 
 }
@@ -745,6 +860,10 @@ function quitMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
     updateUserOnChan('remove', data.channels,data.from);
+    for(var i = 0; i < data.channels.length; i++)
+    {
+        channels[data.channels[i]].lineCounter ++;
+    }
     printMessage(data.date, '<---', data.channels, data.from + ' quited the network '+ (data.data ? data.data : ''), 'quitMessage');
 }
 
@@ -755,26 +874,36 @@ function kickMessageHandler(serialized)
     {
         deleteChannel(data.channel);
     }
-    updateUserOnChan("remove",data.channel, data.target);
-    printMessage(data.date, '|<---', data.channel, (data.target +' was kick by ' + data.by + (data.data ? ' reason : ' + data.data : '')), 'kickMessage');
+    else
+    {
+        updateUserOnChan("remove",data.channel, data.target);
+        printMessage(data.date, '|<---', data.channel, (data.target +' was kick by ' + data.by + (data.data ? ' reason : ' + data.data : '')), 'kickMessage');
+        channels[data.channel].lineCounter ++;
+    }
 }
 
 function killMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
     updateUserOnChan('remove', data.channels,data.target);
+    for(var i = 0; i < data.channels.length; i++)
+    {
+        channels[data.channels[i]].lineCounter ++;
+    }
     printMessage(data.date, '<---', data.channels, data.target + ' quited the network '+ (data.data ? data.data : ''), 'killMessage');
 }
 
 function messageMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
+    channels[data.channel].lineCounter ++;
     printMessage(data.date, data.from, data.channel, data.data, 'plainMessage');
 }
 
 function actionMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
+    channels[data.channel].lineCounter ++;
     printMessage(data.date, data.from, data.channel, data.data, 'actionMessage');
 }
 
@@ -795,7 +924,6 @@ function nickMessageHandler(serialized)
     updateUserOnChan('nick', data.to, data.from, data.data);
     for(var i = 0; i < data.to.length; i++)
     {
-
         printMessage(data.date, '=-=' , data.to[i] , data.from + ' is now known as ' + data.data, 'nickMessage');
     }
 }
@@ -807,6 +935,7 @@ function pmMessageHandler(serialized)
     {
         createChannel(data.from, 'pm');
     }
+    channels[data.from].lineCounter ++;
     printMessage(data.date, data.from, data.from, data.data, 'pmMessage');
 }
 
@@ -817,6 +946,8 @@ function privateActionMessageHandler(serialized)
     {
         createChannel(data.from, 'pm');
     }
+
+    channels[data.from].lineCounter ++;
     printMessage(data.date, data.from, data.from, data.data, 'pmAction');
 }
 
@@ -827,6 +958,8 @@ function addModeMessageHandler(serialized)
     {
         updateMode(data.channel, data.data,data.to,'+');
     }
+
+    channels[data.channel].lineCounter ++;
     printMessage(data.date, '=-=', data.channel, data.from + ' set mode +' + data.data + ' on '+ (data.to === undefined ? data.channel : data.to) );
 }
 
@@ -838,6 +971,7 @@ function remModeMessageHandler(serialized)
         updateMode(data.channel, data.data,data.to,'-');
         getNames(data.channel);
     }
+    channels[data.channel].lineCounter ++;
     printMessage(data.date, '=-=', data.channel, data.from + ' set mode -' + data.data + ' on '+ (data.to === undefined ? data.channel : data.to) );
 }
 
@@ -880,4 +1014,11 @@ function ircErrorHandler(serialized)
 function errorMessageHandler(data)
 {
     var data = JSON.parse(data);//magic if you manage the error it il not ork
+}
+
+function systemHistoryHandler(serialized)
+{
+    var data = JSON.parse(serialized);
+    printHistory(data.data);
+    channels[data.channel].historyLock = false;
 }
