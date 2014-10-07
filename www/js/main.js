@@ -1,6 +1,4 @@
 "use strict";
-
-//TODO corriger le cas de smessages broadcasté
 var debug = true;
 var HISTORY_LENGTH = 50;
 var HISTORY_STEP = 50;
@@ -88,13 +86,13 @@ function send(chan)
         type = 'message';
         channel = message.target;
         message = message.message;
+        if(type === 'part')
+        {
+            deleteChannel(chan);
+            return;
+        }
+    }
 
-    }
-    if(type === 'part')
-    {
-        deleteChannel(chan);
-        return;
-    }
 
     socket.emit('message', JSON.stringify({
         command :type,
@@ -495,6 +493,10 @@ function whois(name)
  */
 function printMessage(date, src, chan, msg, type)
 {
+    if(!channels[chan])
+    {
+        return;
+    }
     var channel = channels[chan];
     var id = channel.id;
     var sDate = new Date(date);
@@ -586,7 +588,11 @@ function printHistory (historyData)
                 output += stringify(data.date, '<---', data.from + ' quited the network '+ (data.data ? data.data : ''), 'quitMessage');
             }
         }
-        channels[data.channel].lineCounter++;
+        if(channels[data.channel])
+        {
+            channels[data.channel].lineCounter++;
+        }
+
     }
     if(data != null)
     {
@@ -766,7 +772,10 @@ function motdMessageHandler(serialized)
 function namesMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    channels[data.channel].lineCounter ++;
+    if(channels[data.channel])
+    {
+        channels[data.channel].lineCounter ++;
+    }
     displayUserOnChan(data.channel, data.data);
 }
 
@@ -774,7 +783,10 @@ function topicMessageHandler(serialized)
 {
     //TODO prevenir l'utilisateur que le topic a changé
     var data = JSON.parse(serialized);
-    channels[data.channel].lineCounter ++;
+    if(channels[data.channel])
+    {
+        channels[data.channel].lineCounter ++;
+    }
     if(data.data)
     {
         updateTopicOnChan(data.channel, data.data);
@@ -794,7 +806,10 @@ function joinMessageHandler(serialized)
         updateUserOnChan('add',data.channel, data.from);
         printMessage(data.date, '--->', data.channel,  data.from + ' joined the chan ', 'joinMessage');
     }
-    channels[data.channel].lineCounter ++;
+    if(channels[data.channel])
+    {
+        channels[data.channel].lineCounter ++;
+    }
 
 }
 
@@ -809,9 +824,11 @@ function partMessageHandler(serialized)
     {
         updateUserOnChan('remove',data.channel, data.from);
         printMessage(data.date, '|<---', data.channel, data.from + ' parted the chan '+ (data.data ? data.data : ''), 'partMessage');
-        channels[data.channel].lineCounter ++;
+        if(channels[data.channel])
+        {
+            channels[data.channel].lineCounter ++;
+        }
     }
-
 }
 
 function quitMessageHandler(serialized)
@@ -820,9 +837,12 @@ function quitMessageHandler(serialized)
     updateUserOnChan('remove', data.channels,data.from);
     for(var i = 0; i < data.channels.length; i++)
     {
-        channels[data.channels[i]].lineCounter ++;
+        printMessage(data.date, '<---', data.channels[i], data.from + ' quited the network '+ (data.data ? data.data : ''), 'quitMessage');
+        if(channels[data.channels[i]])
+        {
+            channels[data.channels[i]].lineCounter ++;
+        }
     }
-    printMessage(data.date, '<---', data.channels, data.from + ' quited the network '+ (data.data ? data.data : ''), 'quitMessage');
 }
 
 function kickMessageHandler(serialized)
@@ -836,7 +856,10 @@ function kickMessageHandler(serialized)
     {
         updateUserOnChan("remove",data.channel, data.target);
         printMessage(data.date, '|<---', data.channel, (data.target +' was kick by ' + data.by + (data.data ? ' reason : ' + data.data : '')), 'kickMessage');
-        channels[data.channel].lineCounter ++;
+        if(channels[data.channel])
+        {
+            channels[data.channel].lineCounter ++;
+        }
     }
 }
 
@@ -846,22 +869,31 @@ function killMessageHandler(serialized)
     updateUserOnChan('remove', data.channels,data.target);
     for(var i = 0; i < data.channels.length; i++)
     {
-        channels[data.channels[i]].lineCounter ++;
+        printMessage(data.date, '<---', data.channels[i], data.target + ' quited the network '+ (data.data ? data.data : ''), 'killMessage');
+        if(channels[data.channels[i]])
+        {
+            channels[data.channels[i]].lineCounter ++;
+        }
     }
-    printMessage(data.date, '<---', data.channels, data.target + ' quited the network '+ (data.data ? data.data : ''), 'killMessage');
 }
 
 function messageMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    channels[data.channel].lineCounter ++;
+    if(channels[data.channel])
+    {
+        channels[data.channel].lineCounter ++;
+    }
     printMessage(data.date, data.from, data.channel, data.data, 'plainMessage');
 }
 
 function actionMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    channels[data.channel].lineCounter ++;
+    if(channels[data.channel])
+    {
+        channels[data.channel].lineCounter ++;
+    }
     printMessage(data.date, data.from, data.channel, data.data, 'actionMessage');
 }
 
@@ -893,7 +925,10 @@ function pmMessageHandler(serialized)
     {
         createChannel(data.from, 'pm');
     }
-    channels[data.from].lineCounter ++;
+    if(channels[data.from])
+    {
+        channels[data.from].lineCounter ++;
+    }
     printMessage(data.date, data.from, data.from, data.data, 'pmMessage');
 }
 
@@ -905,7 +940,10 @@ function privateActionMessageHandler(serialized)
         createChannel(data.from, 'pm');
     }
 
-    channels[data.from].lineCounter ++;
+    if(channels[data.from])
+    {
+        channels[data.from].lineCounter ++;
+    }
     printMessage(data.date, data.from, data.from, data.data, 'pmAction');
 }
 
@@ -917,10 +955,10 @@ function addModeMessageHandler(serialized)
         users[data.to].whoisString = undefined;
         whois(data.to);
     }
-
-    channels[data.channel].lineCounter ++;
-
-
+    if(channels[data.channel])
+    {
+        channels[data.channel].lineCounter ++;
+    }
     printMessage(data.date, '=-=', data.channel, data.from + ' set mode +' + data.data + ' on '+ (data.to === undefined ? data.channel : data.to) );
 }
 
@@ -932,7 +970,10 @@ function remModeMessageHandler(serialized)
         users[data.to].whoisString = undefined;
         whois(data.to);
     }
-    channels[data.channel].lineCounter ++;
+    if(channels[data.channel])
+    {
+        channels[data.channel].lineCounter ++;
+    }
     printMessage(data.date, '=-=', data.channel, data.from + ' set mode -' + data.data + ' on '+ (data.to === undefined ? data.channel : data.to) );
 }
 
@@ -990,12 +1031,15 @@ function ircErrorHandler(serialized)
 }
 function errorMessageHandler(data)
 {
-    var data = JSON.parse(data);//magic if you manage the error it il not ork
+    var data = JSON.parse(data);//magic if you manage the error it il not work
 }
 
 function systemHistoryHandler(serialized)
 {
     var data = JSON.parse(serialized);
-    printHistory(data.data);
+    if(data.data && data.data.length >0)
+    {
+        printHistory(data.data);
+    }
     channels[data.channel].historyLock = false;
 }
