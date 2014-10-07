@@ -122,7 +122,7 @@ function createServer()
                 }
                 else if(data.command === 'mode')
                 {
-                    mode(data.channel, data.message.mode, data.message.user);
+                    mode(data.channel, data.message.mode, data.message.target);
                 }
                 else
                 {
@@ -508,6 +508,7 @@ function action(channel, text)
 }
 function mode(channel, mode, user)
 {
+    console.log('mode '+channel + ' ' + mode + ' ' +user);
     if(user)
     {
         client.send('MODE', channel, mode, user);

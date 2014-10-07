@@ -88,12 +88,18 @@ function send(chan)
         type = 'message';
         channel = message.target;
         message = message.message;
-        if(type === 'part')
-        {
-            deleteChannel(chan);
-            return;
-        }
+
     }
+    if(type === 'part')
+    {
+        deleteChannel(chan);
+        return;
+    }
+    console.log({
+        command :type,
+        channel : channel,
+        message : message
+    });
 
     socket.emit('message', JSON.stringify({
         command :type,
@@ -135,6 +141,7 @@ function createChannel(name, type)
             chanDOM += '</div>';
             chanDOM += '<div class="chanDataWrapper" id="chan' + channels[name].id + 'dataWrapper" onscroll="updateScrollStatut(\'' + name + '\',this)">';
                 chanDOM += '<table class="chanData" id="chan' + channels[name].id + 'data">';
+                    chanDOM += '<tr><td></td><td></td><td class="messageData"><hr/></td></tr>';
                 chanDOM += '</table>';
             chanDOM += '</div>';
             chanDOM += '<div class="chanLower" id="chan' + channels[name].id + 'lower">';
