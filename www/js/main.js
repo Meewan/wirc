@@ -95,11 +95,6 @@ function send(chan)
         deleteChannel(chan);
         return;
     }
-    console.log({
-        command :type,
-        channel : channel,
-        message : message
-    });
 
     socket.emit('message', JSON.stringify({
         command :type,
@@ -713,6 +708,10 @@ function updateUserOnChan(action, chan, usr, newName)
                 chanUser.id = 'userChan' + channels[chan[i]].id + users[newName].id;
             }
         }
+        else if(action ='update')
+        {
+            document.getElementById('userSymbol' + channels[chan[i]].id + users[usr].id).innerHTML = users[usr].right[chan];
+        }
         chanUser = null;
     }
 }
@@ -726,54 +725,6 @@ function updateTopicOnChan(chan, topic)
     document.getElementById('chan' + channels[chan].id + 'topic').innerHTML = '<span class="topicWord" >' + htmlSpecialChar(topic) + '</span>';
 }
 
-function updateMode(chan, mode, user, argument)
-{
-    if(users[user].mode[chan] === undefined)
-    {
-        users[user].mode[chan] ='';
-    }
-    if (argument === '+')
-    {
-
-        users[user].mode[chan] += mode;
-    }
-    else if (argument === '-')
-    {
-        users[user].mode[chan] = users[user].mode[chan].replace(mode, '');
-    }
-
-    var right = rightForUser(chan, user);
-    if (right !== users[user].right[chan])
-    {
-        users[user].right[chan] = right;
-        updateUserOnChan('nick', chan, user, user);
-    }
-}
-
-function rightForUser(chan, user)
-{
-    var right = users[user].mode[chan];
-    if(right.indexOf('o') !== -1)
-    {
-        return '@';
-    }
-    else if(right.indexOf('O') !== -1)
-    {
-        return '@';
-    }
-    else if(right.indexOf('h') !== -1)
-    {
-        return '%';
-    }
-    else if(right.indexOf('v') !== -1)
-    {
-        return '+';
-    }
-    else
-    {
-        return '';
-    }
-}
 //////////////////////////////////socket handler////////////////////////////////////////////////////////////////////////
 function backMessageHandler(serialized)
 {
@@ -963,10 +914,13 @@ function addModeMessageHandler(serialized)
     var data = JSON.parse(serialized);
     if(data.to !== undefined)
     {
-        updateMode(data.channel, data.data,data.to,'+');
+        users[data.to].whoisString = undefined;
+        whois(data.to);
     }
 
     channels[data.channel].lineCounter ++;
+
+
     printMessage(data.date, '=-=', data.channel, data.from + ' set mode +' + data.data + ' on '+ (data.to === undefined ? data.channel : data.to) );
 }
 
@@ -975,8 +929,8 @@ function remModeMessageHandler(serialized)
     var data = JSON.parse(serialized);
     if(data.to !== undefined)
     {
-        updateMode(data.channel, data.data,data.to,'-');
-        getNames(data.channel);
+        users[data.to].whoisString = undefined;
+        whois(data.to);
     }
     channels[data.channel].lineCounter ++;
     printMessage(data.date, '=-=', data.channel, data.from + ' set mode -' + data.data + ' on '+ (data.to === undefined ? data.channel : data.to) );
@@ -985,19 +939,35 @@ function remModeMessageHandler(serialized)
 function whoisMessageHandler(serialized)
 {
     var data = JSON.parse(serialized);
-
     var whoisString = data.data.nick + '<' + data.data.user  +'@'+ data.data.host + '> "' + data.data.realname +'"';
 
     var whoisChannels = '';
     var flag = true;
     for(var chan in data.data.channels)
     {
+        var cleanChan;
+        var symbole;
+        if(data.data.channels[chan].substr(0,1) === '#')
+        {
+            symbole = ' ';
+            cleanChan = data.data.channels[chan];
+        }
+        else
+        {
+            symbole = data.data.channels[chan].substr(0,1);
+            cleanChan = data.data.channels[chan].substr(1);
+        }
         if(!flag)
         {
             whoisChannels += ' and ';
         }
-        whoisChannels += chan;
+        whoisChannels += data.data.channels[chan];
         flag = false;
+        if(channels[cleanChan] && users[data.data.nick])
+        {
+            users[data.to].right[cleanChan] = symbole;
+            updateUserOnChan('update', cleanChan, data.data.nick);
+        }
     }
     if(users[data.to].whoisString !== undefined)
     {
