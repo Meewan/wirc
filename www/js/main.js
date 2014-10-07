@@ -674,7 +674,6 @@ function updateUserOnChan(action, chan, usr, newName)
             users[usr] = {
                 id : 'u_'+ idCount++,
                 name : htmlSpecialChar(usr),
-                mode : new Array(),
                 right : new Array()
             };
             whois(usr);
@@ -694,7 +693,20 @@ function updateUserOnChan(action, chan, usr, newName)
         else if (action === 'remove')
         {
             chanUser = document.getElementById('userChan' + channels[chan[i]].id + users[usr].id);
-            users[usr] = undefined;
+            users[usr].right[chan[i]] = undefined;
+            var flag = true;
+            for(var j = 0; j < users[usr].right.length; j++)
+            {
+                if (users[usr].right[chan[j]] !== undefined)
+                {
+                    flag=false;
+                    break;
+                }
+            }
+            if (flag)
+            {
+                users[usr] = undefined;
+            }
             if (chanUser !== null)
             {
                 chanUser.style.display = 'none';
@@ -992,6 +1004,7 @@ function whoisMessageHandler(serialized)
     var whoisString = data.data.nick + '<' + data.data.user  +'@'+ data.data.host + '> "' + data.data.realname +'"';
 
     var whoisChannels = '';
+    var isOnAChan = true;
     var flag = true;
     for(var chan in data.data.channels)
     {
@@ -1018,8 +1031,12 @@ function whoisMessageHandler(serialized)
             users[data.to].right[cleanChan] = symbole;
             updateUserOnChan('update', cleanChan, data.data.nick);
         }
+        if(users[data.data.nick].right[cleanChan] === undefined)
+        {
+            isOnAChan = false;
+        }
     }
-    if(users[data.to].whoisString !== undefined)
+    if(users[data.to].whoisString !== undefined && isOnAChan)
     {
         printMessage(data.date, '---', currentChannel.realName,  'Start of WHOIS information for ' + data.data.nick, 'whois');
         printMessage(data.date, '=-=', currentChannel.realName, whoisString, 'whois');
