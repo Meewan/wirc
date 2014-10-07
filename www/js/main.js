@@ -313,6 +313,15 @@ function messageFilter(message, command)
         }
         return {target : target, reason : reason};
     }
+    else if (command === 'part')
+    {
+        var tmp = message.substring((message.indexOf(' ') + 1));
+        if(tmp === '/part')
+        {
+            return '';
+        }
+        return tmp;
+    }
     else if(command === 'pm')
     {
         var tmp = message.substring((message.indexOf(' ') + 1));
