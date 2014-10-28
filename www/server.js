@@ -1,13 +1,10 @@
 var config ='';
 var serverConfigFile = 'config.json';
-var static = require('node-static');
 var connected = 0;
 var http = require('http');
 var crypto = require('crypto');
 var file = new(static.Server)();
 var static = require('node-static');
-var http = require('http');
-var file = new(static.Server)();
 var irc = require('irc');
 var redis = require('redis');
 var redisClient;
